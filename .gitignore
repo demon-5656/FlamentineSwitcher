@@ -1,0 +1,8 @@
+build/
+.cache/
+.idea/
+*.user
+*.autosave
+*.swp
+*.log
+

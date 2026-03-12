@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=FlamentineSwitcher
+Comment=Keyboard layout switcher and text conversion utility for Plasma
+Exec=flamentine-switcher
+Icon=input-keyboard
+Categories=Utility;Qt;
+StartupNotify=false
+X-KDE-autostart-phase=2
+

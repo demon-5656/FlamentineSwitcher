@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=FlamentineSwitcher
+Comment=Start FlamentineSwitcher in the user session
+Exec=flamentine-switcher
+Icon=input-keyboard
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2

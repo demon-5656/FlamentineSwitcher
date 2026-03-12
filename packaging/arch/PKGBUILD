@@ -1,0 +1,26 @@
+pkgname=flamentine-switcher
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Keyboard layout switcher and text conversion utility for KDE Plasma"
+arch=('x86_64')
+url="https://github.com/demon-5656/FlamentineSwitcher"
+license=('MIT')
+depends=('qt6-base' 'libx11' 'libxkbfile')
+makedepends=('cmake' 'ninja')
+source=("${pkgname}-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cmake -S "${srcdir}/${pkgname}-${pkgver}" -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+  cmake --build build
+}
+
+check() {
+  ctest --test-dir build --output-on-failure
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build
+  install -Dm644 "${srcdir}/${pkgname}-${pkgver}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
+
