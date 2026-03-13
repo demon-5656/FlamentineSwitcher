@@ -28,6 +28,8 @@ public:
 signals:
     void configApplied(const FlamentineSwitcher::Core::AppConfig& config);
     void allowCurrentTargetRequested();
+    void allowCurrentAppRequested();
+    void allowCurrentWindowClassRequested();
     void importRequested(const QString& filePath);
     void exportRequested(const QString& filePath);
 
@@ -53,6 +55,8 @@ private:
     QLabel* currentTargetWindowClassValueLabel_ = nullptr;
     QLabel* currentTargetWindowIdValueLabel_ = nullptr;
     QLabel* currentTargetFullscreenValueLabel_ = nullptr;
+    QPushButton* addCurrentAppButton_ = nullptr;
+    QPushButton* addCurrentWindowClassButton_ = nullptr;
     QPushButton* addCurrentTargetButton_ = nullptr;
     QCheckBox* excludeTerminalsCheckBox_ = nullptr;
     QCheckBox* excludeFullscreenCheckBox_ = nullptr;

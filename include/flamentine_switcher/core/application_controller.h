@@ -67,6 +67,8 @@ public slots:
     bool enable();
     bool disable();
     bool openSettings();
+    bool allowCurrentApp();
+    bool allowCurrentWindowClass();
     bool allowCurrentTarget();
     void applyConfig(const AppConfig& config);
     void importConfig(const QString& filePath);
@@ -95,6 +97,7 @@ private:
     void replaceClipboardText(const QString& text) const;
     void registerHotkeys();
     void rememberCurrentTargetLayout(const QString& layoutId);
+    bool allowCurrentTargetEntries(bool allowApp, bool allowWindowClass);
     void updateCurrentTargetUi(const WindowContext& context);
     void syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId);
     void updateTextInputBackendState();

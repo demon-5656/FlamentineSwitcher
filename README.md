@@ -37,6 +37,7 @@ The current text conversion workflow is intentionally conservative:
 - X11 delayed auto-conversion only buffers committed words in explicitly allowed targets and cancels replacement if typing continues
 - target policy UI now exposes an explicit allowlist-only mode instead of a hidden checkbox
 - tray and settings can add the currently focused target to the allowlist in one action
+- tray target inspector now exposes separate quick actions for `app only`, `WM_CLASS only`, or both
 - settings now show the currently detected target details: app, `WM_CLASS`, window id and fullscreen state
 - Wayland stays in the safe/manual mode without low-level text interception
 
@@ -116,6 +117,7 @@ Wayland support in KDE Plasma is now usable for safe/manual flows:
 - current layout detection through `org.kde.KeyboardLayouts`
 - manual layout switching through `org.kde.KeyboardLayouts`
 - tray and settings
+- tray target inspector with quick allowlist actions
 
 Wayland limitations still remain:
 

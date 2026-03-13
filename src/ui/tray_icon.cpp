@@ -8,6 +8,15 @@
 
 namespace FlamentineSwitcher::Ui {
 
+namespace {
+
+QString displayValue(const QString& value) {
+    const QString trimmed = value.trimmed();
+    return trimmed.isEmpty() ? QStringLiteral("—") : trimmed;
+}
+
+}  // namespace
+
 TrayIcon::TrayIcon(QObject* parent)
     : QObject(parent)
     , menu_(new QMenu()) {
@@ -20,7 +29,21 @@ TrayIcon::TrayIcon(QObject* parent)
     toggleEnabledAction_->setChecked(true);
 
     toggleLayoutAction_ = menu_->addAction(QStringLiteral("Switch Layout"));
-    allowCurrentTargetAction_ = menu_->addAction(QStringLiteral("Allow Current Target"));
+    currentTargetMenu_ = menu_->addMenu(QStringLiteral("Current Target"));
+    currentTargetStatusAction_ = currentTargetMenu_->addAction(QStringLiteral("No focused target"));
+    currentTargetAppAction_ = currentTargetMenu_->addAction(QStringLiteral("App: —"));
+    currentTargetWindowClassAction_ = currentTargetMenu_->addAction(QStringLiteral("WM_CLASS: —"));
+    currentTargetWindowIdAction_ = currentTargetMenu_->addAction(QStringLiteral("Window ID: —"));
+    currentTargetFullscreenAction_ = currentTargetMenu_->addAction(QStringLiteral("Fullscreen: —"));
+    currentTargetMenu_->addSeparator();
+    allowCurrentAppAction_ = currentTargetMenu_->addAction(QStringLiteral("Allow Current App Only"));
+    allowCurrentWindowClassAction_ = currentTargetMenu_->addAction(QStringLiteral("Allow Current WM_CLASS Only"));
+    allowCurrentTargetAction_ = currentTargetMenu_->addAction(QStringLiteral("Allow App + WM_CLASS"));
+    currentTargetStatusAction_->setEnabled(false);
+    currentTargetAppAction_->setEnabled(false);
+    currentTargetWindowClassAction_->setEnabled(false);
+    currentTargetWindowIdAction_->setEnabled(false);
+    currentTargetFullscreenAction_->setEnabled(false);
     convertLastWordAction_ = menu_->addAction(QStringLiteral("Convert Last Word"));
     convertSelectionAction_ = menu_->addAction(QStringLiteral("Convert Selection"));
     menu_->addSeparator();
@@ -33,6 +56,8 @@ TrayIcon::TrayIcon(QObject* parent)
 
     connect(toggleEnabledAction_, &QAction::toggled, this, &TrayIcon::enabledToggled);
     connect(toggleLayoutAction_, &QAction::triggered, this, &TrayIcon::toggleLayoutRequested);
+    connect(allowCurrentAppAction_, &QAction::triggered, this, &TrayIcon::allowCurrentAppRequested);
+    connect(allowCurrentWindowClassAction_, &QAction::triggered, this, &TrayIcon::allowCurrentWindowClassRequested);
     connect(allowCurrentTargetAction_, &QAction::triggered, this, &TrayIcon::allowCurrentTargetRequested);
     connect(convertLastWordAction_, &QAction::triggered, this, &TrayIcon::convertLastWordRequested);
     connect(convertSelectionAction_, &QAction::triggered, this, &TrayIcon::convertSelectionRequested);
@@ -49,6 +74,12 @@ void TrayIcon::setCurrentLayout(const QString& layoutId) {
     currentLayout_ = layoutId.isEmpty() ? QStringLiteral("--") : layoutId.left(2).toUpper();
     rebuildMenuLabels();
     rebuildIcon();
+}
+
+void TrayIcon::setCurrentTargetContext(const FlamentineSwitcher::Core::WindowContext& context, const QString& backendStatus) {
+    currentTargetContext_ = context;
+    currentTargetStatus_ = backendStatus.trimmed();
+    rebuildMenuLabels();
 }
 
 void TrayIcon::setEnabledState(const bool enabled) {
@@ -91,8 +122,29 @@ void TrayIcon::rebuildIcon() {
 }
 
 void TrayIcon::rebuildMenuLabels() {
+    const bool hasIdentifiedTarget = !currentTargetContext_.appName.trimmed().isEmpty()
+        || !currentTargetContext_.windowClass.trimmed().isEmpty() || !currentTargetContext_.windowId.trimmed().isEmpty();
+
     statusAction_->setText(QStringLiteral("Layout: %1").arg(currentLayout_));
     toggleEnabledAction_->setText(enabled_ ? QStringLiteral("Enabled") : QStringLiteral("Disabled"));
+    currentTargetStatusAction_->setText(
+        hasIdentifiedTarget ? QStringLiteral("Detected focused target")
+                            : (currentTargetStatus_.isEmpty() ? QStringLiteral("No focused target")
+                                                              : QStringLiteral("Status: %1").arg(currentTargetStatus_)));
+    currentTargetAppAction_->setText(QStringLiteral("App: %1").arg(displayValue(currentTargetContext_.appName)));
+    currentTargetWindowClassAction_->setText(
+        QStringLiteral("WM_CLASS: %1").arg(displayValue(currentTargetContext_.windowClass)));
+    currentTargetWindowIdAction_->setText(QStringLiteral("Window ID: %1").arg(displayValue(currentTargetContext_.windowId)));
+    currentTargetFullscreenAction_->setText(
+        QStringLiteral("Fullscreen: %1").arg(hasIdentifiedTarget ? (currentTargetContext_.fullscreen ? QStringLiteral("Yes")
+                                                                                                     : QStringLiteral("No"))
+                                                                 : QStringLiteral("—")));
+
+    const bool hasApp = !currentTargetContext_.appName.trimmed().isEmpty();
+    const bool hasWindowClass = !currentTargetContext_.windowClass.trimmed().isEmpty();
+    allowCurrentAppAction_->setEnabled(hasApp);
+    allowCurrentWindowClassAction_->setEnabled(hasWindowClass);
+    allowCurrentTargetAction_->setEnabled(hasApp || hasWindowClass);
 }
 
 }  // namespace FlamentineSwitcher::Ui

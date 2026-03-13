@@ -77,12 +77,22 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
     connect(&trayIcon_, &Ui::TrayIcon::convertLastWordRequested, this, &ApplicationController::convertLastWord);
     connect(&trayIcon_, &Ui::TrayIcon::convertSelectionRequested, this, &ApplicationController::convertSelection);
     connect(&trayIcon_, &Ui::TrayIcon::openSettingsRequested, this, &ApplicationController::openSettings);
+    connect(&trayIcon_, &Ui::TrayIcon::allowCurrentAppRequested, this, &ApplicationController::allowCurrentApp);
+    connect(&trayIcon_,
+            &Ui::TrayIcon::allowCurrentWindowClassRequested,
+            this,
+            &ApplicationController::allowCurrentWindowClass);
     connect(&trayIcon_, &Ui::TrayIcon::allowCurrentTargetRequested, this, &ApplicationController::allowCurrentTarget);
     connect(&trayIcon_, &Ui::TrayIcon::enabledToggled, this, [this](const bool enabled) {
         setEnabled(enabled);
     });
     connect(&trayIcon_, &Ui::TrayIcon::quitRequested, qApp, &QCoreApplication::quit);
     connect(&settingsWindow_, &Ui::SettingsWindow::configApplied, this, &ApplicationController::applyConfig);
+    connect(&settingsWindow_, &Ui::SettingsWindow::allowCurrentAppRequested, this, &ApplicationController::allowCurrentApp);
+    connect(&settingsWindow_,
+            &Ui::SettingsWindow::allowCurrentWindowClassRequested,
+            this,
+            &ApplicationController::allowCurrentWindowClass);
     connect(&settingsWindow_, &Ui::SettingsWindow::allowCurrentTargetRequested, this, &ApplicationController::allowCurrentTarget);
     connect(&settingsWindow_, &Ui::SettingsWindow::importRequested, this, &ApplicationController::importConfig);
     connect(&settingsWindow_, &Ui::SettingsWindow::exportRequested, this, &ApplicationController::exportConfig);
@@ -238,7 +248,19 @@ bool ApplicationController::openSettings() {
     return true;
 }
 
+bool ApplicationController::allowCurrentApp() {
+    return allowCurrentTargetEntries(true, false);
+}
+
+bool ApplicationController::allowCurrentWindowClass() {
+    return allowCurrentTargetEntries(false, true);
+}
+
 bool ApplicationController::allowCurrentTarget() {
+    return allowCurrentTargetEntries(true, true);
+}
+
+bool ApplicationController::allowCurrentTargetEntries(const bool allowApp, const bool allowWindowClass) {
     const WindowContext context = windowBackend_.currentContext();
     if (context.appName.trimmed().isEmpty() && context.windowClass.trimmed().isEmpty()) {
         notifyWarning(windowBackend_.lastError().isEmpty() ? QStringLiteral("Unable to identify the active target")
@@ -248,10 +270,10 @@ bool ApplicationController::allowCurrentTarget() {
 
     AppConfig updatedConfig = config_;
     QStringList addedEntries;
-    if (appendIfMissing(updatedConfig.allowedApps, context.appName)) {
+    if (allowApp && appendIfMissing(updatedConfig.allowedApps, context.appName)) {
         addedEntries.append(QStringLiteral("app=%1").arg(context.appName.trimmed()));
     }
-    if (appendIfMissing(updatedConfig.allowedWindowClasses, context.windowClass)) {
+    if (allowWindowClass && appendIfMissing(updatedConfig.allowedWindowClasses, context.windowClass)) {
         addedEntries.append(QStringLiteral("class=%1").arg(context.windowClass.trimmed()));
     }
 
@@ -388,6 +410,7 @@ void ApplicationController::rememberCurrentTargetLayout(const QString& layoutId)
 }
 
 void ApplicationController::updateCurrentTargetUi(const WindowContext& context) {
+    trayIcon_.setCurrentTargetContext(context, windowBackend_.lastError());
     settingsWindow_.setCurrentTargetContext(context, windowBackend_.lastError());
 }
 

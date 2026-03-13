@@ -84,7 +84,9 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     currentTargetWindowClassValueLabel_ = new QLabel(QStringLiteral("—"));
     currentTargetWindowIdValueLabel_ = new QLabel(QStringLiteral("—"));
     currentTargetFullscreenValueLabel_ = new QLabel(QStringLiteral("—"));
-    addCurrentTargetButton_ = new QPushButton(QStringLiteral("Add Current Target To Allowlist"));
+    addCurrentAppButton_ = new QPushButton(QStringLiteral("Allow Current App Only"));
+    addCurrentWindowClassButton_ = new QPushButton(QStringLiteral("Allow Current WM_CLASS Only"));
+    addCurrentTargetButton_ = new QPushButton(QStringLiteral("Allow App + WM_CLASS"));
 
     auto* detectedGroup = new QGroupBox(QStringLiteral("Detected Current Target"));
     auto* detectedForm = new QFormLayout(detectedGroup);
@@ -92,6 +94,11 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     detectedForm->addRow(QStringLiteral("WM_CLASS"), currentTargetWindowClassValueLabel_);
     detectedForm->addRow(QStringLiteral("Window ID"), currentTargetWindowIdValueLabel_);
     detectedForm->addRow(QStringLiteral("Fullscreen"), currentTargetFullscreenValueLabel_);
+
+    auto* quickAddLayout = new QHBoxLayout();
+    quickAddLayout->addWidget(addCurrentAppButton_);
+    quickAddLayout->addWidget(addCurrentWindowClassButton_);
+    quickAddLayout->addWidget(addCurrentTargetButton_);
 
     allowedAppsEdit_ = new QPlainTextEdit();
     allowedAppsEdit_->setPlaceholderText(QStringLiteral("org.telegram.desktop\ncode\nfirefox"));
@@ -128,7 +135,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     targetsLayout->addWidget(targetPolicyHintLabel_);
     targetsLayout->addWidget(currentTargetStatusLabel_);
     targetsLayout->addWidget(detectedGroup);
-    targetsLayout->addWidget(addCurrentTargetButton_);
+    targetsLayout->addLayout(quickAddLayout);
     targetsLayout->addWidget(allowedGroup);
     targetsLayout->addWidget(blockedGroup);
     tabs->addTab(makePage(tabs, targetsLayout), QStringLiteral("Targets"));
@@ -201,6 +208,8 @@ SettingsWindow::SettingsWindow(QWidget* parent)
 
     connect(layoutsEdit_, &QLineEdit::textChanged, this, &SettingsWindow::syncDefaultLayoutChoices);
     connect(targetPolicyCombo_, &QComboBox::currentIndexChanged, this, &SettingsWindow::syncTargetPolicyUi);
+    connect(addCurrentAppButton_, &QPushButton::clicked, this, &SettingsWindow::allowCurrentAppRequested);
+    connect(addCurrentWindowClassButton_, &QPushButton::clicked, this, &SettingsWindow::allowCurrentWindowClassRequested);
     connect(addCurrentTargetButton_, &QPushButton::clicked, this, &SettingsWindow::allowCurrentTargetRequested);
     connect(importButton_, &QPushButton::clicked, this, &SettingsWindow::chooseImportFile);
     connect(exportButton_, &QPushButton::clicked, this, &SettingsWindow::chooseExportFile);
@@ -254,7 +263,11 @@ void SettingsWindow::setCurrentTargetContext(const FlamentineSwitcher::Core::Win
     currentTargetFullscreenValueLabel_->setText(
         hasIdentifiedTarget ? (context.fullscreen ? QStringLiteral("Yes") : QStringLiteral("No")) : QStringLiteral("—"));
 
-    addCurrentTargetButton_->setEnabled(!context.appName.trimmed().isEmpty() || !context.windowClass.trimmed().isEmpty());
+    const bool hasApp = !context.appName.trimmed().isEmpty();
+    const bool hasWindowClass = !context.windowClass.trimmed().isEmpty();
+    addCurrentAppButton_->setEnabled(hasApp);
+    addCurrentWindowClassButton_->setEnabled(hasWindowClass);
+    addCurrentTargetButton_->setEnabled(hasApp || hasWindowClass);
     if (!backendStatus.trimmed().isEmpty() && !hasIdentifiedTarget) {
         currentTargetStatusLabel_->setText(QStringLiteral("Window backend status: %1").arg(backendStatus.trimmed()));
     } else if (hasIdentifiedTarget) {
