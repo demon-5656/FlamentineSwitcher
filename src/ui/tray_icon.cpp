@@ -20,6 +20,7 @@ TrayIcon::TrayIcon(QObject* parent)
     toggleEnabledAction_->setChecked(true);
 
     toggleLayoutAction_ = menu_->addAction(QStringLiteral("Switch Layout"));
+    allowCurrentTargetAction_ = menu_->addAction(QStringLiteral("Allow Current Target"));
     convertLastWordAction_ = menu_->addAction(QStringLiteral("Convert Last Word"));
     convertSelectionAction_ = menu_->addAction(QStringLiteral("Convert Selection"));
     menu_->addSeparator();
@@ -32,6 +33,7 @@ TrayIcon::TrayIcon(QObject* parent)
 
     connect(toggleEnabledAction_, &QAction::toggled, this, &TrayIcon::enabledToggled);
     connect(toggleLayoutAction_, &QAction::triggered, this, &TrayIcon::toggleLayoutRequested);
+    connect(allowCurrentTargetAction_, &QAction::triggered, this, &TrayIcon::allowCurrentTargetRequested);
     connect(convertLastWordAction_, &QAction::triggered, this, &TrayIcon::convertLastWordRequested);
     connect(convertSelectionAction_, &QAction::triggered, this, &TrayIcon::convertSelectionRequested);
     connect(openSettingsAction_, &QAction::triggered, this, &TrayIcon::openSettingsRequested);

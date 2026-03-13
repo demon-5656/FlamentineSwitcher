@@ -3,6 +3,7 @@
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QMap>
+#include <utility>
 
 #include "flamentine_switcher/backends/hotkeys/ihotkey_backend.h"
 #include "flamentine_switcher/backends/layout/ilayout_backend.h"
@@ -24,6 +25,22 @@ namespace {
 bool sameWindowTarget(const WindowContext& left, const WindowContext& right) {
     return left.windowId == right.windowId && left.appName == right.appName && left.windowClass == right.windowClass
         && left.fullscreen == right.fullscreen;
+}
+
+bool appendIfMissing(QStringList& values, const QString& value) {
+    const QString trimmed = value.trimmed();
+    if (trimmed.isEmpty()) {
+        return false;
+    }
+
+    for (const QString& existing : std::as_const(values)) {
+        if (existing.compare(trimmed, Qt::CaseInsensitive) == 0) {
+            return false;
+        }
+    }
+
+    values.append(trimmed);
+    return true;
 }
 
 }  // namespace
@@ -50,18 +67,23 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
     , notifications_(notifications) {
     refreshTimer_.setInterval(900);
     autoConvertTimer_.setSingleShot(true);
+    layoutMemoryPersistTimer_.setSingleShot(true);
+    layoutMemoryPersistTimer_.setInterval(700);
 
     connect(&refreshTimer_, &QTimer::timeout, this, &ApplicationController::refreshLayout);
     connect(&autoConvertTimer_, &QTimer::timeout, this, &ApplicationController::processPendingAutoConversion);
+    connect(&layoutMemoryPersistTimer_, &QTimer::timeout, this, &ApplicationController::persistLayoutMemory);
     connect(&trayIcon_, &Ui::TrayIcon::toggleLayoutRequested, this, &ApplicationController::toggleLayout);
     connect(&trayIcon_, &Ui::TrayIcon::convertLastWordRequested, this, &ApplicationController::convertLastWord);
     connect(&trayIcon_, &Ui::TrayIcon::convertSelectionRequested, this, &ApplicationController::convertSelection);
     connect(&trayIcon_, &Ui::TrayIcon::openSettingsRequested, this, &ApplicationController::openSettings);
+    connect(&trayIcon_, &Ui::TrayIcon::allowCurrentTargetRequested, this, &ApplicationController::allowCurrentTarget);
     connect(&trayIcon_, &Ui::TrayIcon::enabledToggled, this, [this](const bool enabled) {
         setEnabled(enabled);
     });
     connect(&trayIcon_, &Ui::TrayIcon::quitRequested, qApp, &QCoreApplication::quit);
     connect(&settingsWindow_, &Ui::SettingsWindow::configApplied, this, &ApplicationController::applyConfig);
+    connect(&settingsWindow_, &Ui::SettingsWindow::allowCurrentTargetRequested, this, &ApplicationController::allowCurrentTarget);
     connect(&settingsWindow_, &Ui::SettingsWindow::importRequested, this, &ApplicationController::importConfig);
     connect(&settingsWindow_, &Ui::SettingsWindow::exportRequested, this, &ApplicationController::exportConfig);
     connect(&hotkeyBackend_, &Backends::Hotkeys::IHotkeyBackend::hotkeyTriggered, this, &ApplicationController::handleHotkeyAction);
@@ -70,6 +92,7 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
             &Backends::Text::ITextInputBackend::wordCommitted,
             this,
             &ApplicationController::handleObservedWordCommitted);
+    connect(qApp, &QCoreApplication::aboutToQuit, this, &ApplicationController::persistLayoutMemory);
 }
 
 void ApplicationController::initialize() {
@@ -81,6 +104,14 @@ void ApplicationController::initialize() {
     registerHotkeys();
     updateTextInputBackendState();
     trayIcon_.show();
+    if (config_.rememberLayoutPerWindow || config_.rememberLayoutPerApp) {
+        const auto state = settingsManager_.loadLayoutMemoryState();
+        if (state.has_value()) {
+            layoutMemory_.restoreState(state.value());
+        } else if (!settingsManager_.lastError().isEmpty()) {
+            notifyWarning(settingsManager_.lastError());
+        }
+    }
     refreshLayout();
     refreshTimer_.start();
 
@@ -117,6 +148,7 @@ bool ApplicationController::setLayout(const QString& layoutId) {
         return false;
     }
 
+    rememberCurrentTargetLayout(layoutBackend_.currentLayoutId());
     refreshLayout();
     return true;
 }
@@ -128,6 +160,7 @@ bool ApplicationController::toggleLayout() {
         return false;
     }
 
+    rememberCurrentTargetLayout(layoutBackend_.currentLayoutId());
     refreshLayout();
     return true;
 }
@@ -200,6 +233,33 @@ bool ApplicationController::openSettings() {
     settingsWindow_.show();
     settingsWindow_.raise();
     settingsWindow_.activateWindow();
+    return true;
+}
+
+bool ApplicationController::allowCurrentTarget() {
+    const WindowContext context = windowBackend_.currentContext();
+    if (context.appName.trimmed().isEmpty() && context.windowClass.trimmed().isEmpty()) {
+        notifyWarning(windowBackend_.lastError().isEmpty() ? QStringLiteral("Unable to identify the active target")
+                                                           : windowBackend_.lastError());
+        return false;
+    }
+
+    AppConfig updatedConfig = config_;
+    QStringList addedEntries;
+    if (appendIfMissing(updatedConfig.allowedApps, context.appName)) {
+        addedEntries.append(QStringLiteral("app=%1").arg(context.appName.trimmed()));
+    }
+    if (appendIfMissing(updatedConfig.allowedWindowClasses, context.windowClass)) {
+        addedEntries.append(QStringLiteral("class=%1").arg(context.windowClass.trimmed()));
+    }
+
+    if (addedEntries.isEmpty()) {
+        notifyInfo(QStringLiteral("Current target is already present in the allowlist"));
+        return true;
+    }
+
+    applyConfig(updatedConfig);
+    notifyInfo(QStringLiteral("Added current target to allowlist: %1").arg(addedEntries.join(QStringLiteral(", "))));
     return true;
 }
 
@@ -315,6 +375,13 @@ void ApplicationController::registerHotkeys() {
     }
 }
 
+void ApplicationController::rememberCurrentTargetLayout(const QString& layoutId) {
+    const WindowContext context = windowBackend_.currentContext();
+    if (Rules::isAllowed(config_, context) && layoutMemory_.remember(config_, context, layoutId)) {
+        scheduleLayoutMemoryPersist();
+    }
+}
+
 void ApplicationController::syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId) {
     const bool rememberEnabled = config_.rememberLayoutPerWindow || config_.rememberLayoutPerApp;
     if (!rememberEnabled) {
@@ -340,8 +407,9 @@ void ApplicationController::syncRememberedLayout(const WindowContext& context, c
         return;
     }
 
-    if (Rules::isAllowed(config_, context) && !currentLayoutId.trimmed().isEmpty()) {
-        layoutMemory_.remember(config_, context, currentLayoutId);
+    if (Rules::isAllowed(config_, context) && !currentLayoutId.trimmed().isEmpty()
+        && layoutMemory_.remember(config_, context, currentLayoutId)) {
+        scheduleLayoutMemoryPersist();
     }
 }
 
@@ -354,8 +422,23 @@ void ApplicationController::updateTextInputBackendState() {
     }
     if (!config_.rememberLayoutPerWindow && !config_.rememberLayoutPerApp) {
         layoutMemory_.clear();
+        persistLayoutMemory();
     }
     textInputBackend_.setEnabled(shouldObserve);
+}
+
+void ApplicationController::scheduleLayoutMemoryPersist() {
+    if (!(config_.rememberLayoutPerWindow || config_.rememberLayoutPerApp)) {
+        return;
+    }
+
+    layoutMemoryPersistTimer_.start();
+}
+
+void ApplicationController::persistLayoutMemory() {
+    if (!settingsManager_.saveLayoutMemoryState(layoutMemory_.exportState())) {
+        notifyWarning(settingsManager_.lastError());
+    }
 }
 
 QString ApplicationController::targetLayoutIdForDirection(const Conversion::ConversionDirection direction) const {

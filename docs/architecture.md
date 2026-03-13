@@ -10,7 +10,7 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 - `SettingsManager` loads, validates and stores JSON configuration.
 - `ApplicationController` coordinates UI, backends and service entry points.
 - `Rules` contains future-safe logic for exclusions and window-based behavior.
-- `LayoutMemory` keeps per-window and per-app layout state outside the backend layer.
+- `LayoutMemory` keeps per-window and per-app layout state outside the backend layer and persists it through `SettingsManager`.
 
 ### Backends
 
@@ -31,8 +31,8 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 
 ### UI and Services
 
-- `TrayIcon` exposes fast actions and current status.
-- `SettingsWindow` edits the full application config.
+- `TrayIcon` exposes fast actions, current status and quick allowlisting for the focused target.
+- `SettingsWindow` edits the full application config and can add the current target to the allowlist.
 - `Notifications` centralizes user-facing status messages.
 - `DbusService` provides remote control entry points.
 - `AutostartService` manages a desktop autostart entry in the user session.

@@ -67,6 +67,7 @@ public slots:
     bool enable();
     bool disable();
     bool openSettings();
+    bool allowCurrentTarget();
     void applyConfig(const AppConfig& config);
     void importConfig(const QString& filePath);
     void exportConfig(const QString& filePath);
@@ -93,8 +94,11 @@ private:
     QString clipboardText() const;
     void replaceClipboardText(const QString& text) const;
     void registerHotkeys();
+    void rememberCurrentTargetLayout(const QString& layoutId);
     void syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId);
     void updateTextInputBackendState();
+    void scheduleLayoutMemoryPersist();
+    void persistLayoutMemory();
     QString targetLayoutIdForDirection(Conversion::ConversionDirection direction) const;
     void notifyInfo(const QString& message) const;
     void notifyWarning(const QString& message) const;
@@ -114,6 +118,7 @@ private:
     QString lastError_;
     QTimer refreshTimer_;
     QTimer autoConvertTimer_;
+    QTimer layoutMemoryPersistTimer_;
     PendingAutoConversion pendingAutoConversion_;
     WindowContext lastWindowContext_;
     bool syncingRememberedLayout_ = false;

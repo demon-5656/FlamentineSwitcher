@@ -184,4 +184,5 @@ if(BUILD_TESTING)
     qt_add_executable(x11_text_target tests/x11_text_target.cpp)
     target_include_directories(x11_text_target PRIVATE include)
     target_link_libraries(x11_text_target PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+
 endif()

@@ -6,6 +6,7 @@ Default path:
 
 ```text
 $XDG_CONFIG_HOME/FlamentineSwitcher/config.json
+$XDG_CONFIG_HOME/FlamentineSwitcher/state.json
 ```
 
 Example:
@@ -61,4 +62,4 @@ Example:
 
 `autoConvertDelayMs` controls the X11-only delayed replacement timer. The backend only buffers committed words in explicitly allowed applications and cancels replacement if the user keeps typing before the timer expires.
 
-`rememberLayoutPerWindow` and `rememberLayoutPerApp` are session-local memory features. When enabled, the controller stores the last known layout for the allowed X11 target and restores it when that window or application regains focus.
+`rememberLayoutPerWindow` and `rememberLayoutPerApp` control remembered layouts for allowed X11 targets. The user-facing settings live in `config.json`, while the last known per-window and per-app layout state is persisted separately in `state.json` so it survives restarts.

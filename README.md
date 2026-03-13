@@ -23,7 +23,7 @@ This repository now contains the initial project skeleton plus an MVP-oriented f
 - X11 active-window backend for app-aware policy decisions
 - global X11 hotkey backend based on `XGrabKey`
 - delayed X11 typed-word observation and replacement for allowed applications only
-- per-window and per-app layout memory for allowed X11 targets
+- persistent per-window and per-app layout memory for allowed X11 targets
 - tray icon and settings window
 - text converter for `us <-> ru`
 - D-Bus service skeleton
@@ -36,6 +36,7 @@ The current text conversion workflow is intentionally conservative:
 - when deny-by-default mode is enabled, conversion is blocked unless the active target is explicitly allowed
 - X11 delayed auto-conversion only buffers committed words in explicitly allowed targets and cancels replacement if typing continues
 - target policy UI now exposes an explicit allowlist-only mode instead of a hidden checkbox
+- tray and settings can add the currently focused target to the allowlist in one action
 - Wayland stays in the safe/manual mode without low-level text interception
 
 ## Build
@@ -59,6 +60,14 @@ Controlled X11 end-to-end check for delayed replacement:
 ```bash
 tests/run_x11_delayed_replacement_e2e.sh ./build/flamentine-switcher ./build/x11_text_target "$DISPLAY"
 ```
+
+Controlled X11 end-to-end check for remember-per-window:
+
+```bash
+tests/run_x11_remember_per_window_e2e.sh ./build/flamentine-switcher ./build/x11_text_target "$DISPLAY"
+```
+
+The remember-per-window smoke test assumes a real Plasma X11 session where the harness can transfer focus to the target window. On Xwayland-driven displays it exits early with a clear message instead of pretending the check passed.
 
 Run:
 

@@ -73,6 +73,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     targetPolicyCombo_->addItem(QStringLiteral("Allow everywhere except blocked"), false);
     targetPolicyHintLabel_ = new QLabel();
     targetPolicyHintLabel_->setWordWrap(true);
+    addCurrentTargetButton_ = new QPushButton(QStringLiteral("Add Current Target To Allowlist"));
 
     allowedAppsEdit_ = new QPlainTextEdit();
     allowedAppsEdit_->setPlaceholderText(QStringLiteral("org.telegram.desktop\ncode\nfirefox"));
@@ -107,6 +108,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     auto* targetsLayout = new QVBoxLayout();
     targetsLayout->addLayout(policyForm);
     targetsLayout->addWidget(targetPolicyHintLabel_);
+    targetsLayout->addWidget(addCurrentTargetButton_);
     targetsLayout->addWidget(allowedGroup);
     targetsLayout->addWidget(blockedGroup);
     tabs->addTab(makePage(tabs, targetsLayout), QStringLiteral("Targets"));
@@ -179,6 +181,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
 
     connect(layoutsEdit_, &QLineEdit::textChanged, this, &SettingsWindow::syncDefaultLayoutChoices);
     connect(targetPolicyCombo_, &QComboBox::currentIndexChanged, this, &SettingsWindow::syncTargetPolicyUi);
+    connect(addCurrentTargetButton_, &QPushButton::clicked, this, &SettingsWindow::allowCurrentTargetRequested);
     connect(importButton_, &QPushButton::clicked, this, &SettingsWindow::chooseImportFile);
     connect(exportButton_, &QPushButton::clicked, this, &SettingsWindow::chooseExportFile);
     connect(applyButton_, &QPushButton::clicked, this, &SettingsWindow::apply);

@@ -9,6 +9,7 @@ private slots:
     void remembersPerWindow();
     void fallsBackToPerApp();
     void prefersPerWindowOverApp();
+    void roundTripsPersistentState();
 };
 
 void LayoutMemoryTests::remembersPerWindow() {
@@ -67,6 +68,37 @@ void LayoutMemoryTests::prefersPerWindowOverApp() {
     const auto recalled = memory.recall(config, specificWindowContext);
     QVERIFY(recalled.has_value());
     QCOMPARE(recalled.value(), QStringLiteral("us"));
+}
+
+void LayoutMemoryTests::roundTripsPersistentState() {
+    FlamentineSwitcher::Core::LayoutMemory memory;
+    FlamentineSwitcher::Core::AppConfig config = FlamentineSwitcher::Core::AppConfig::defaults();
+    config.rememberLayoutPerWindow = true;
+    config.rememberLayoutPerApp = true;
+
+    FlamentineSwitcher::Core::WindowContext windowContext;
+    windowContext.windowId = QStringLiteral("0xabc");
+    windowContext.appName = QStringLiteral("firefox");
+    memory.remember(config, windowContext, QStringLiteral("ru"));
+
+    FlamentineSwitcher::Core::WindowContext appContext;
+    appContext.windowId = QStringLiteral("0xdef");
+    appContext.appName = QStringLiteral("code");
+    memory.remember(config, appContext, QStringLiteral("us"));
+
+    const auto state = memory.exportState();
+    QVERIFY(!state.isEmpty());
+
+    FlamentineSwitcher::Core::LayoutMemory restoredMemory;
+    restoredMemory.restoreState(FlamentineSwitcher::Core::LayoutMemoryState::fromJsonObject(state.toJsonObject()));
+
+    const auto restoredWindow = restoredMemory.recall(config, windowContext);
+    QVERIFY(restoredWindow.has_value());
+    QCOMPARE(restoredWindow.value(), QStringLiteral("ru"));
+
+    const auto restoredApp = restoredMemory.recall(config, appContext);
+    QVERIFY(restoredApp.has_value());
+    QCOMPARE(restoredApp.value(), QStringLiteral("us"));
 }
 
 QTEST_APPLESS_MAIN(LayoutMemoryTests)

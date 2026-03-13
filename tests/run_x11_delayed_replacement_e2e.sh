@@ -24,13 +24,20 @@ done
 
 CONFIG_DIR="${HOME}/.config/FlamentineSwitcher"
 CONFIG_FILE="${CONFIG_DIR}/config.json"
+STATE_FILE="${CONFIG_DIR}/state.json"
 mkdir -p "$CONFIG_DIR"
 
 BACKUP_FILE="$(mktemp)"
+BACKUP_STATE_FILE="$(mktemp)"
 if [ -f "$CONFIG_FILE" ]; then
   cp "$CONFIG_FILE" "$BACKUP_FILE"
 else
   : > "$BACKUP_FILE"
+fi
+if [ -f "$STATE_FILE" ]; then
+  cp "$STATE_FILE" "$BACKUP_STATE_FILE"
+else
+  : > "$BACKUP_STATE_FILE"
 fi
 
 APP_PID=""
@@ -53,8 +60,13 @@ cleanup() {
   else
     rm -f "$CONFIG_FILE"
   fi
+  if [ -s "$BACKUP_STATE_FILE" ]; then
+    cp "$BACKUP_STATE_FILE" "$STATE_FILE"
+  else
+    rm -f "$STATE_FILE"
+  fi
 
-  rm -f "$BACKUP_FILE"
+  rm -f "$BACKUP_FILE" "$BACKUP_STATE_FILE"
   rm -rf "$TEMP_DIR"
 }
 trap cleanup EXIT
@@ -96,6 +108,7 @@ cat > "$CONFIG_FILE" <<'JSON'
   }
 }
 JSON
+rm -f "$STATE_FILE"
 
 if command -v setxkbmap >/dev/null 2>&1; then
   DISPLAY="$DISPLAY_TO_USE" setxkbmap -layout us,ru >/dev/null 2>&1 || true
@@ -134,8 +147,12 @@ fi
 
 DISPLAY="$DISPLAY_TO_USE" xdotool windowactivate --sync "$WINDOW_ID" >/dev/null 2>&1
 sleep 0.8
+DISPLAY="$DISPLAY_TO_USE" xdotool mousemove --window "$WINDOW_ID" 50 30 click 1 >/dev/null 2>&1
+sleep 0.2
+DISPLAY="$DISPLAY_TO_USE" xdotool key ctrl+a >/dev/null 2>&1
+sleep 0.1
 DISPLAY="$DISPLAY_TO_USE" xdotool type --delay 120 ghbdtn\  >/dev/null 2>&1
-sleep 1.1
+sleep 2.1
 
 CURRENT_LAYOUT="$(qdbus org.flamentineswitcher.Control /org/flamentineswitcher/Control org.flamentineswitcher.Control.GetCurrentLayout | tr -d '\r\n')"
 

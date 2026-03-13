@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
     };
 
     QObject::connect(lineEdit, &QLineEdit::returnPressed, &window, finish);
-    QTimer::singleShot(10000, &window, finish);
+    QTimer::singleShot(15000, &window, finish);
 
     window.show();
     window.raise();

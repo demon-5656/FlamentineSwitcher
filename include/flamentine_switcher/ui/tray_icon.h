@@ -24,6 +24,7 @@ signals:
     void convertLastWordRequested();
     void convertSelectionRequested();
     void openSettingsRequested();
+    void allowCurrentTargetRequested();
     void enabledToggled(bool enabled);
     void quitRequested();
 
@@ -40,9 +41,9 @@ private:
     QAction* toggleLayoutAction_ = nullptr;
     QAction* convertLastWordAction_ = nullptr;
     QAction* convertSelectionAction_ = nullptr;
+    QAction* allowCurrentTargetAction_ = nullptr;
     QAction* openSettingsAction_ = nullptr;
     QAction* quitAction_ = nullptr;
 };
 
 }  // namespace FlamentineSwitcher::Ui
-

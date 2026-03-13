@@ -25,6 +25,7 @@ public:
 
 signals:
     void configApplied(const FlamentineSwitcher::Core::AppConfig& config);
+    void allowCurrentTargetRequested();
     void importRequested(const QString& filePath);
     void exportRequested(const QString& filePath);
 
@@ -45,6 +46,7 @@ private:
     QCheckBox* autostartCheckBox_ = nullptr;
     QComboBox* targetPolicyCombo_ = nullptr;
     QLabel* targetPolicyHintLabel_ = nullptr;
+    QPushButton* addCurrentTargetButton_ = nullptr;
     QCheckBox* excludeTerminalsCheckBox_ = nullptr;
     QCheckBox* excludeFullscreenCheckBox_ = nullptr;
     QKeySequenceEdit* toggleLayoutShortcut_ = nullptr;
