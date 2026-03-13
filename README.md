@@ -37,6 +37,7 @@ The current text conversion workflow is intentionally conservative:
 - X11 delayed auto-conversion only buffers committed words in explicitly allowed targets and cancels replacement if typing continues
 - target policy UI now exposes an explicit allowlist-only mode instead of a hidden checkbox
 - tray and settings can add the currently focused target to the allowlist in one action
+- settings now show the currently detected target details: app, `WM_CLASS`, window id and fullscreen state
 - Wayland stays in the safe/manual mode without low-level text interception
 
 ## Build
@@ -67,7 +68,21 @@ Controlled X11 end-to-end check for remember-per-window:
 tests/run_x11_remember_per_window_e2e.sh ./build/flamentine-switcher ./build/x11_text_target "$DISPLAY"
 ```
 
-The remember-per-window smoke test assumes a real Plasma X11 session where the harness can transfer focus to the target window. On Xwayland-driven displays it exits early with a clear message instead of pretending the check passed.
+Controlled X11 end-to-end check for remember-per-app:
+
+```bash
+tests/run_x11_remember_per_app_e2e.sh ./build/flamentine-switcher ./build/x11_text_target "$DISPLAY"
+```
+
+Full X11 smoke suite for a real Plasma X11 session or a clean nested server:
+
+```bash
+tests/run_x11_runtime_smoke_suite.sh ./build/flamentine-switcher ./build/x11_text_target "$DISPLAY"
+tests/run_x11_runtime_smoke_suite.sh ./build/flamentine-switcher ./build/x11_text_target --xephyr
+tests/run_x11_runtime_smoke_suite.sh ./build/flamentine-switcher ./build/x11_text_target --xvfb
+```
+
+The remember-per-window and remember-per-app smoke tests assume a real Plasma X11 session where the harness can transfer focus to the target window. On Xwayland-driven displays they exit early with a clear message instead of pretending the check passed.
 
 Run:
 
@@ -84,6 +99,7 @@ Run:
 - `include/flamentine_switcher/ui`: tray icon, settings window, notifications
 - `include/flamentine_switcher/services`: D-Bus and autostart services
 - `docs/`: architecture notes, config format, D-Bus API, Wayland limitations, Caramba assessment
+- `docs/testing-x11-smoke.md`: runtime smoke guidance for existing Plasma X11 sessions and nested servers
 
 ## X11 vs Wayland
 

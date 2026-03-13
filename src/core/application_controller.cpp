@@ -99,6 +99,7 @@ void ApplicationController::initialize() {
     config_ = settingsManager_.load();
     Utils::Logging::initialize(config_.logging);
     settingsWindow_.loadFromConfig(config_);
+    settingsWindow_.setCurrentTargetContext({}, windowBackend_.lastError());
     trayIcon_.setEnabledState(config_.enabled);
     autostartService_.setEnabled(config_.autoStart);
     registerHotkeys();
@@ -230,6 +231,7 @@ bool ApplicationController::disable() {
 }
 
 bool ApplicationController::openSettings() {
+    updateCurrentTargetUi(windowBackend_.currentContext());
     settingsWindow_.show();
     settingsWindow_.raise();
     settingsWindow_.activateWindow();
@@ -303,12 +305,14 @@ void ApplicationController::exportConfig(const QString& filePath) {
 }
 
 void ApplicationController::refreshLayout() {
+    const WindowContext context = windowBackend_.currentContext();
     const QString currentLayoutId = layoutBackend_.currentLayoutId();
     if (!syncingRememberedLayout_) {
-        syncRememberedLayout(windowBackend_.currentContext(), currentLayoutId);
+        syncRememberedLayout(context, currentLayoutId);
     }
 
     const QString layoutId = layoutBackend_.currentLayoutId();
+    updateCurrentTargetUi(context);
     trayIcon_.setCurrentLayout(layoutId.isEmpty() ? QStringLiteral("--") : layoutId);
     emit layoutChanged(layoutId);
 }
@@ -380,6 +384,11 @@ void ApplicationController::rememberCurrentTargetLayout(const QString& layoutId)
     if (Rules::isAllowed(config_, context) && layoutMemory_.remember(config_, context, layoutId)) {
         scheduleLayoutMemoryPersist();
     }
+    updateCurrentTargetUi(context);
+}
+
+void ApplicationController::updateCurrentTargetUi(const WindowContext& context) {
+    settingsWindow_.setCurrentTargetContext(context, windowBackend_.lastError());
 }
 
 void ApplicationController::syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId) {

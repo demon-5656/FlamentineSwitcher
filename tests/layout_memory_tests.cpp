@@ -10,6 +10,7 @@ private slots:
     void fallsBackToPerApp();
     void prefersPerWindowOverApp();
     void roundTripsPersistentState();
+    void restoresPerAppStateFromPersistentSnapshot();
 };
 
 void LayoutMemoryTests::remembersPerWindow() {
@@ -99,6 +100,26 @@ void LayoutMemoryTests::roundTripsPersistentState() {
     const auto restoredApp = restoredMemory.recall(config, appContext);
     QVERIFY(restoredApp.has_value());
     QCOMPARE(restoredApp.value(), QStringLiteral("us"));
+}
+
+void LayoutMemoryTests::restoresPerAppStateFromPersistentSnapshot() {
+    FlamentineSwitcher::Core::AppConfig config = FlamentineSwitcher::Core::AppConfig::defaults();
+    config.rememberLayoutPerWindow = false;
+    config.rememberLayoutPerApp = true;
+
+    FlamentineSwitcher::Core::LayoutMemoryState state;
+    state.layoutsByApp.insert(QStringLiteral("x11_text_target"), QStringLiteral("ru"));
+
+    FlamentineSwitcher::Core::LayoutMemory memory;
+    memory.restoreState(state);
+
+    FlamentineSwitcher::Core::WindowContext restoredContext;
+    restoredContext.windowId = QStringLiteral("0x999");
+    restoredContext.appName = QStringLiteral("x11_text_target");
+
+    const auto recalled = memory.recall(config, restoredContext);
+    QVERIFY(recalled.has_value());
+    QCOMPARE(recalled.value(), QStringLiteral("ru"));
 }
 
 QTEST_APPLESS_MAIN(LayoutMemoryTests)

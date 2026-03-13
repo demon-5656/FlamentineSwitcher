@@ -63,3 +63,5 @@ Example:
 `autoConvertDelayMs` controls the X11-only delayed replacement timer. The backend only buffers committed words in explicitly allowed applications and cancels replacement if the user keeps typing before the timer expires.
 
 `rememberLayoutPerWindow` and `rememberLayoutPerApp` control remembered layouts for allowed X11 targets. The user-facing settings live in `config.json`, while the last known per-window and per-app layout state is persisted separately in `state.json` so it survives restarts.
+
+The settings window also exposes the currently detected target metadata so the allowlist can be filled from real `appName` and `WM_CLASS` values instead of guessing them manually.

@@ -32,7 +32,7 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 ### UI and Services
 
 - `TrayIcon` exposes fast actions, current status and quick allowlisting for the focused target.
-- `SettingsWindow` edits the full application config and can add the current target to the allowlist.
+- `SettingsWindow` edits the full application config, shows the currently detected target metadata and can add that target to the allowlist.
 - `Notifications` centralizes user-facing status messages.
 - `DbusService` provides remote control entry points.
 - `AutostartService` manages a desktop autostart entry in the user session.
@@ -46,6 +46,7 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 5. Manual conversion requests still use the clipboard-safe workflow.
 6. On X11, the text-input backend can observe committed words in allowed targets and schedule delayed replacement after a pause.
 7. On X11, the controller can restore remembered layouts when focus moves between allowed windows or applications.
+8. The settings window is refreshed with the latest detected target context so allowlist rules can be created without guessing process or `WM_CLASS` values.
 
 ## Why this split
 

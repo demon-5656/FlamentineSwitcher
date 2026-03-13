@@ -25,6 +25,11 @@ QWidget* makePage(QObject* parent, QLayout* layout) {
     return widget;
 }
 
+QString displayValue(const QString& value) {
+    const QString trimmed = value.trimmed();
+    return trimmed.isEmpty() ? QStringLiteral("—") : trimmed;
+}
+
 }  // namespace
 
 namespace FlamentineSwitcher::Ui {
@@ -73,7 +78,20 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     targetPolicyCombo_->addItem(QStringLiteral("Allow everywhere except blocked"), false);
     targetPolicyHintLabel_ = new QLabel();
     targetPolicyHintLabel_->setWordWrap(true);
+    currentTargetStatusLabel_ = new QLabel();
+    currentTargetStatusLabel_->setWordWrap(true);
+    currentTargetAppValueLabel_ = new QLabel(QStringLiteral("—"));
+    currentTargetWindowClassValueLabel_ = new QLabel(QStringLiteral("—"));
+    currentTargetWindowIdValueLabel_ = new QLabel(QStringLiteral("—"));
+    currentTargetFullscreenValueLabel_ = new QLabel(QStringLiteral("—"));
     addCurrentTargetButton_ = new QPushButton(QStringLiteral("Add Current Target To Allowlist"));
+
+    auto* detectedGroup = new QGroupBox(QStringLiteral("Detected Current Target"));
+    auto* detectedForm = new QFormLayout(detectedGroup);
+    detectedForm->addRow(QStringLiteral("Application"), currentTargetAppValueLabel_);
+    detectedForm->addRow(QStringLiteral("WM_CLASS"), currentTargetWindowClassValueLabel_);
+    detectedForm->addRow(QStringLiteral("Window ID"), currentTargetWindowIdValueLabel_);
+    detectedForm->addRow(QStringLiteral("Fullscreen"), currentTargetFullscreenValueLabel_);
 
     allowedAppsEdit_ = new QPlainTextEdit();
     allowedAppsEdit_->setPlaceholderText(QStringLiteral("org.telegram.desktop\ncode\nfirefox"));
@@ -108,6 +126,8 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     auto* targetsLayout = new QVBoxLayout();
     targetsLayout->addLayout(policyForm);
     targetsLayout->addWidget(targetPolicyHintLabel_);
+    targetsLayout->addWidget(currentTargetStatusLabel_);
+    targetsLayout->addWidget(detectedGroup);
     targetsLayout->addWidget(addCurrentTargetButton_);
     targetsLayout->addWidget(allowedGroup);
     targetsLayout->addWidget(blockedGroup);
@@ -188,6 +208,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     connect(closeButton, &QPushButton::clicked, this, &QDialog::hide);
 
     syncTargetPolicyUi();
+    setCurrentTargetContext({});
 }
 
 void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& config) {
@@ -221,6 +242,27 @@ void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& c
     loggingLevelCombo_->setCurrentText(FlamentineSwitcher::Core::toString(config.logging.level));
     logFileCheckBox_->setChecked(config.logging.fileEnabled);
     syncTargetPolicyUi();
+}
+
+void SettingsWindow::setCurrentTargetContext(const FlamentineSwitcher::Core::WindowContext& context, const QString& backendStatus) {
+    const bool hasIdentifiedTarget =
+        !context.appName.trimmed().isEmpty() || !context.windowClass.trimmed().isEmpty() || !context.windowId.trimmed().isEmpty();
+
+    currentTargetAppValueLabel_->setText(displayValue(context.appName));
+    currentTargetWindowClassValueLabel_->setText(displayValue(context.windowClass));
+    currentTargetWindowIdValueLabel_->setText(displayValue(context.windowId));
+    currentTargetFullscreenValueLabel_->setText(
+        hasIdentifiedTarget ? (context.fullscreen ? QStringLiteral("Yes") : QStringLiteral("No")) : QStringLiteral("—"));
+
+    addCurrentTargetButton_->setEnabled(!context.appName.trimmed().isEmpty() || !context.windowClass.trimmed().isEmpty());
+    if (!backendStatus.trimmed().isEmpty() && !hasIdentifiedTarget) {
+        currentTargetStatusLabel_->setText(QStringLiteral("Window backend status: %1").arg(backendStatus.trimmed()));
+    } else if (hasIdentifiedTarget) {
+        currentTargetStatusLabel_->setText(
+            QStringLiteral("The currently focused target is detected below. You can add it to the allowlist in one action."));
+    } else {
+        currentTargetStatusLabel_->setText(QStringLiteral("No focused target is detected yet."));
+    }
 }
 
 FlamentineSwitcher::Core::AppConfig SettingsWindow::buildConfig() const {

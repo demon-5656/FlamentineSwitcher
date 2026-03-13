@@ -3,6 +3,7 @@
 #include <QDialog>
 
 #include "flamentine_switcher/core/config.h"
+#include "flamentine_switcher/core/models.h"
 
 class QCheckBox;
 class QComboBox;
@@ -21,6 +22,7 @@ public:
     explicit SettingsWindow(QWidget* parent = nullptr);
 
     void loadFromConfig(const FlamentineSwitcher::Core::AppConfig& config);
+    void setCurrentTargetContext(const FlamentineSwitcher::Core::WindowContext& context, const QString& backendStatus = QString());
     FlamentineSwitcher::Core::AppConfig buildConfig() const;
 
 signals:
@@ -46,6 +48,11 @@ private:
     QCheckBox* autostartCheckBox_ = nullptr;
     QComboBox* targetPolicyCombo_ = nullptr;
     QLabel* targetPolicyHintLabel_ = nullptr;
+    QLabel* currentTargetStatusLabel_ = nullptr;
+    QLabel* currentTargetAppValueLabel_ = nullptr;
+    QLabel* currentTargetWindowClassValueLabel_ = nullptr;
+    QLabel* currentTargetWindowIdValueLabel_ = nullptr;
+    QLabel* currentTargetFullscreenValueLabel_ = nullptr;
     QPushButton* addCurrentTargetButton_ = nullptr;
     QCheckBox* excludeTerminalsCheckBox_ = nullptr;
     QCheckBox* excludeFullscreenCheckBox_ = nullptr;

@@ -95,6 +95,7 @@ private:
     void replaceClipboardText(const QString& text) const;
     void registerHotkeys();
     void rememberCurrentTargetLayout(const QString& layoutId);
+    void updateCurrentTargetUi(const WindowContext& context);
     void syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId);
     void updateTextInputBackendState();
     void scheduleLayoutMemoryPersist();
