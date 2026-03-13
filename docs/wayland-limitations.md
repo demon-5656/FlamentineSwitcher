@@ -11,8 +11,9 @@ FlamentineSwitcher does not claim full Punto Switcher-like behavior on Wayland.
 
 ## Current Wayland stance
 
-- the application starts and remains usable as a tray/settings utility
-- unsupported features report their state through backend capability checks
+- the application reads the active Plasma layout via `org.kde.KeyboardLayouts`
+- manual layout switching works through the same Plasma D-Bus API
+- the application remains usable as a tray/settings utility
 - text conversion remains available as a manual clipboard-oriented workflow
 
 ## Why
@@ -24,4 +25,3 @@ Modern Wayland compositors deliberately restrict global input interception. KDE 
 - supported Plasma or KWin D-Bus interfaces
 - portal-based interactions when suitable
 - compositor-specific integration behind explicit backend modules
-

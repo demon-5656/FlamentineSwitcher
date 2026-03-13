@@ -18,6 +18,7 @@ This repository now contains the initial project skeleton plus an MVP-oriented f
 - Qt6/CMake application layout
 - JSON config loading and saving
 - X11 layout backend based on XKB/Xlib
+- KDE Plasma layout backend on D-Bus for the active system layout in Plasma sessions
 - global X11 hotkey backend based on `XGrabKey`
 - tray icon and settings window
 - text converter for `us <-> ru`
@@ -63,21 +64,25 @@ Run:
 
 ## X11 vs Wayland
 
-X11 is the primary target for the MVP:
+X11 is still the primary target for the full MVP:
 
 - current layout detection
 - layout switching
 - global hotkeys
 
-Wayland is treated honestly:
+Wayland support in KDE Plasma is now usable for safe/manual flows:
 
-- the application still starts
-- tray and settings are available
-- platform-limited features stay disabled until a safe API exists
+- current layout detection through `org.kde.KeyboardLayouts`
+- manual layout switching through `org.kde.KeyboardLayouts`
+- tray and settings
+
+Wayland limitations still remain:
+
+- no global X11-style hotkeys in the current implementation
+- no transparent low-level text interception
 
 See [docs/wayland-limitations.md](docs/wayland-limitations.md) for details.
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
-

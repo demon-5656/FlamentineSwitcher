@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QList>
+
 #include "flamentine_switcher/backends/layout/ilayout_backend.h"
 
 namespace FlamentineSwitcher::Backends::Layout {
@@ -18,9 +20,16 @@ public:
     bool toggleLayout() override;
     QString lastError() const override;
 
+private slots:
+    void handleKdeLayoutChanged(uint index);
+    void handleKdeLayoutListChanged();
+
 private:
-    QString lastError_;
+    bool refreshLayouts() const;
+    int currentLayoutIndex() const;
+
+    mutable QList<FlamentineSwitcher::Core::LayoutInfo> cachedLayouts_;
+    mutable QString lastError_;
 };
 
 }  // namespace FlamentineSwitcher::Backends::Layout
-

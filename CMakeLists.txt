@@ -74,6 +74,7 @@ target_include_directories(flamentine_backends PUBLIC include)
 target_link_libraries(flamentine_backends
     PUBLIC
         Qt6::Core
+        Qt6::DBus
         Qt6::Gui
         ${X11_LIBRARIES}
         ${XKBFILE_LIBRARY}
