@@ -41,6 +41,7 @@ private:
     QCheckBox* rememberPerAppCheckBox_ = nullptr;
     QCheckBox* notificationsCheckBox_ = nullptr;
     QCheckBox* autostartCheckBox_ = nullptr;
+    QCheckBox* requireAllowedTargetsCheckBox_ = nullptr;
     QCheckBox* excludeTerminalsCheckBox_ = nullptr;
     QCheckBox* excludeFullscreenCheckBox_ = nullptr;
     QKeySequenceEdit* toggleLayoutShortcut_ = nullptr;
@@ -48,12 +49,15 @@ private:
     QKeySequenceEdit* convertSelectionShortcut_ = nullptr;
     QKeySequenceEdit* openSettingsShortcut_ = nullptr;
     QKeySequenceEdit* toggleEnabledShortcut_ = nullptr;
+    QPlainTextEdit* allowedAppsEdit_ = nullptr;
+    QPlainTextEdit* allowedWindowClassesEdit_ = nullptr;
     QPlainTextEdit* excludedAppsEdit_ = nullptr;
     QPlainTextEdit* excludedWindowClassesEdit_ = nullptr;
     QCheckBox* preserveCaseCheckBox_ = nullptr;
     QCheckBox* preservePunctuationCheckBox_ = nullptr;
     QCheckBox* autoConvertCheckBox_ = nullptr;
     QCheckBox* heuristicsCheckBox_ = nullptr;
+    QComboBox* autoConvertDelayCombo_ = nullptr;
     QComboBox* loggingLevelCombo_ = nullptr;
     QCheckBox* logFileCheckBox_ = nullptr;
     QPushButton* importButton_ = nullptr;
@@ -62,4 +66,3 @@ private:
 };
 
 }  // namespace FlamentineSwitcher::Ui
-

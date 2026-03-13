@@ -30,6 +30,7 @@ struct ConversionConfig {
     bool preservePunctuation = true;
     bool autoConvertEnabled = false;
     bool heuristicsEnabled = true;
+    int autoConvertDelayMs = 450;
 
     static ConversionConfig fromJsonObject(const QJsonObject& object);
     QJsonObject toJsonObject() const;
@@ -52,6 +53,9 @@ struct AppConfig {
     bool rememberLayoutPerApp = false;
     bool notificationsEnabled = true;
     bool autoStart = false;
+    bool requireAllowedTargets = true;
+    QStringList allowedApps;
+    QStringList allowedWindowClasses;
     QStringList excludedApps;
     QStringList excludedWindowClasses;
     bool excludeTerminals = true;
@@ -71,4 +75,3 @@ LogLevel logLevelFromString(const QString& value);
 }  // namespace FlamentineSwitcher::Core
 
 Q_DECLARE_METATYPE(FlamentineSwitcher::Core::AppConfig)
-

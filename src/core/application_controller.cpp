@@ -70,6 +70,9 @@ void ApplicationController::initialize() {
     if (!hotkeyBackend_.isSupported()) {
         notifyWarning(QStringLiteral("Hotkey backend is limited: %1").arg(hotkeyBackend_.lastError()));
     }
+    if (!windowBackend_.isSupported() && config_.requireAllowedTargets) {
+        notifyWarning(QStringLiteral("Window backend is unavailable, deny-by-default policy will block conversion actions"));
+    }
 }
 
 QString ApplicationController::currentLayout() const {
@@ -112,8 +115,13 @@ QString ApplicationController::convertLastWord() {
         return {};
     }
 
-    if (Rules::isExcluded(config_, windowBackend_.currentContext())) {
-        notifyInfo(QStringLiteral("Current application is excluded from conversion"));
+    const WindowContext context = windowBackend_.currentContext();
+    if (!Rules::isAllowed(config_, context)) {
+        notifyInfo(
+            context.appName.isEmpty() && context.windowClass.isEmpty()
+                ? QStringLiteral("Current application is not identified or not allowed for conversion")
+                : QStringLiteral("Current application is not allowed for conversion: %1")
+                      .arg(!context.appName.isEmpty() ? context.appName : context.windowClass));
         return {};
     }
 
@@ -135,8 +143,13 @@ QString ApplicationController::convertSelection() {
         return {};
     }
 
-    if (Rules::isExcluded(config_, windowBackend_.currentContext())) {
-        notifyInfo(QStringLiteral("Current application is excluded from conversion"));
+    const WindowContext context = windowBackend_.currentContext();
+    if (!Rules::isAllowed(config_, context)) {
+        notifyInfo(
+            context.appName.isEmpty() && context.windowClass.isEmpty()
+                ? QStringLiteral("Current application is not identified or not allowed for conversion")
+                : QStringLiteral("Current application is not allowed for conversion: %1")
+                      .arg(!context.appName.isEmpty() ? context.appName : context.windowClass));
         return {};
     }
 
@@ -283,4 +296,3 @@ void ApplicationController::notifyWarning(const QString& message) const {
 }
 
 }  // namespace FlamentineSwitcher::Core
-

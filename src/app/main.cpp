@@ -5,6 +5,7 @@
 #include "flamentine_switcher/backends/layout/wayland_layout_backend.h"
 #include "flamentine_switcher/backends/layout/x11_layout_backend.h"
 #include "flamentine_switcher/backends/window/fallback_window_backend.h"
+#include "flamentine_switcher/backends/window/x11_window_backend.h"
 #include "flamentine_switcher/core/application_controller.h"
 #include "flamentine_switcher/core/settings_manager.h"
 #include "flamentine_switcher/services/autostart_service.h"
@@ -47,7 +48,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    auto windowBackend = std::make_unique<FlamentineSwitcher::Backends::Window::FallbackWindowBackend>();
+    std::unique_ptr<FlamentineSwitcher::Backends::Window::IWindowBackend> windowBackend =
+        std::make_unique<FlamentineSwitcher::Backends::Window::FallbackWindowBackend>();
+    if (FlamentineSwitcher::Utils::ProcessInfo::currentSessionType() == SessionType::X11) {
+        auto x11WindowBackend = std::make_unique<FlamentineSwitcher::Backends::Window::X11WindowBackend>();
+        if (x11WindowBackend->isSupported()) {
+            windowBackend = std::move(x11WindowBackend);
+        }
+    }
     FlamentineSwitcher::Ui::TrayIcon trayIcon;
     FlamentineSwitcher::Ui::Notifications notifications(trayIcon.systemTrayIcon());
     FlamentineSwitcher::Ui::SettingsWindow settingsWindow;
@@ -68,4 +76,3 @@ int main(int argc, char* argv[]) {
     controller.initialize();
     return app.exec();
 }
-

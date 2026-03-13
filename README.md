@@ -19,6 +19,8 @@ This repository now contains the initial project skeleton plus an MVP-oriented f
 - JSON config loading and saving
 - X11 layout backend based on XKB/Xlib
 - KDE Plasma layout backend on D-Bus for the active system layout in Plasma sessions
+- deny-by-default target policy with explicit allowlists for applications and window classes
+- X11 active-window backend for app-aware policy decisions
 - global X11 hotkey backend based on `XGrabKey`
 - tray icon and settings window
 - text converter for `us <-> ru`
@@ -29,7 +31,9 @@ The current text conversion workflow is intentionally conservative:
 
 - selection conversion operates on X11 selection clipboard or regular clipboard
 - last-word conversion currently transforms the last clipboard token
+- when deny-by-default mode is enabled, conversion is blocked unless the active target is explicitly allowed
 - no unsafe global keylogging is used
+- `autoConvertDelayMs` is already stored in config, but live typed-text observation is still pending a dedicated X11-only backend
 
 ## Build
 

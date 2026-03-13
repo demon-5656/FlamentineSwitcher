@@ -20,6 +20,16 @@ Example:
   "rememberLayoutPerApp": false,
   "notificationsEnabled": true,
   "autoStart": false,
+  "requireAllowedTargets": true,
+  "allowedApps": [
+    "org.telegram.desktop",
+    "code",
+    "firefox"
+  ],
+  "allowedWindowClasses": [
+    "code",
+    "firefox"
+  ],
   "hotkeys": {
     "toggleLayout": "Meta+Space",
     "convertLastWord": "Pause",
@@ -39,7 +49,8 @@ Example:
     "preserveCase": true,
     "preservePunctuation": true,
     "autoConvertEnabled": false,
-    "heuristicsEnabled": true
+    "heuristicsEnabled": true,
+    "autoConvertDelayMs": 450
   },
   "logging": {
     "level": "info",
@@ -48,3 +59,4 @@ Example:
 }
 ```
 
+`autoConvertDelayMs` is a policy field for the future delayed auto-correction pipeline. The current repository stores it in config and exposes it in settings, but live typed-text observation is not implemented yet.

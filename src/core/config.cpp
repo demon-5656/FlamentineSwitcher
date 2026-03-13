@@ -43,6 +43,7 @@ ConversionConfig ConversionConfig::fromJsonObject(const QJsonObject& object) {
     config.preservePunctuation = object.value(QStringLiteral("preservePunctuation")).toBool(config.preservePunctuation);
     config.autoConvertEnabled = object.value(QStringLiteral("autoConvertEnabled")).toBool(config.autoConvertEnabled);
     config.heuristicsEnabled = object.value(QStringLiteral("heuristicsEnabled")).toBool(config.heuristicsEnabled);
+    config.autoConvertDelayMs = qMax(0, object.value(QStringLiteral("autoConvertDelayMs")).toInt(config.autoConvertDelayMs));
     return config;
 }
 
@@ -52,6 +53,7 @@ QJsonObject ConversionConfig::toJsonObject() const {
         {QStringLiteral("preservePunctuation"), preservePunctuation},
         {QStringLiteral("autoConvertEnabled"), autoConvertEnabled},
         {QStringLiteral("heuristicsEnabled"), heuristicsEnabled},
+        {QStringLiteral("autoConvertDelayMs"), autoConvertDelayMs},
     };
 }
 
@@ -89,6 +91,9 @@ AppConfig AppConfig::fromJsonObject(const QJsonObject& object) {
     config.rememberLayoutPerApp = object.value(QStringLiteral("rememberLayoutPerApp")).toBool(config.rememberLayoutPerApp);
     config.notificationsEnabled = object.value(QStringLiteral("notificationsEnabled")).toBool(config.notificationsEnabled);
     config.autoStart = object.value(QStringLiteral("autoStart")).toBool(config.autoStart);
+    config.requireAllowedTargets = object.value(QStringLiteral("requireAllowedTargets")).toBool(config.requireAllowedTargets);
+    config.allowedApps = jsonArrayToStringList(object.value(QStringLiteral("allowedApps")));
+    config.allowedWindowClasses = jsonArrayToStringList(object.value(QStringLiteral("allowedWindowClasses")));
     config.excludedApps = jsonArrayToStringList(object.value(QStringLiteral("excludedApps")));
     config.excludedWindowClasses = jsonArrayToStringList(object.value(QStringLiteral("excludedWindowClasses")));
     config.excludeTerminals = object.value(QStringLiteral("excludeTerminals")).toBool(config.excludeTerminals);
@@ -109,6 +114,9 @@ QJsonObject AppConfig::toJsonObject() const {
         {QStringLiteral("rememberLayoutPerApp"), rememberLayoutPerApp},
         {QStringLiteral("notificationsEnabled"), notificationsEnabled},
         {QStringLiteral("autoStart"), autoStart},
+        {QStringLiteral("requireAllowedTargets"), requireAllowedTargets},
+        {QStringLiteral("allowedApps"), QJsonArray::fromStringList(allowedApps)},
+        {QStringLiteral("allowedWindowClasses"), QJsonArray::fromStringList(allowedWindowClasses)},
         {QStringLiteral("excludedApps"), QJsonArray::fromStringList(excludedApps)},
         {QStringLiteral("excludedWindowClasses"), QJsonArray::fromStringList(excludedWindowClasses)},
         {QStringLiteral("excludeTerminals"), excludeTerminals},
@@ -154,4 +162,3 @@ LogLevel logLevelFromString(const QString& value) {
 }
 
 }  // namespace FlamentineSwitcher::Core
-

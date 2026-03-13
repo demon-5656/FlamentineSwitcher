@@ -38,10 +38,12 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     enabledCheckBox_ = new QCheckBox(QStringLiteral("Enable application"));
     notificationsCheckBox_ = new QCheckBox(QStringLiteral("Enable notifications"));
     autostartCheckBox_ = new QCheckBox(QStringLiteral("Start automatically in the Plasma session"));
+    requireAllowedTargetsCheckBox_ = new QCheckBox(QStringLiteral("Deny by default, only operate in explicitly allowed targets"));
     auto* generalLayout = new QVBoxLayout();
     generalLayout->addWidget(enabledCheckBox_);
     generalLayout->addWidget(notificationsCheckBox_);
     generalLayout->addWidget(autostartCheckBox_);
+    generalLayout->addWidget(requireAllowedTargetsCheckBox_);
     generalLayout->addStretch();
     tabs->addTab(makePage(tabs, generalLayout), QStringLiteral("General"));
 
@@ -67,6 +69,10 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     hotkeysForm->addRow(QStringLiteral("Toggle enabled"), toggleEnabledShortcut_);
     tabs->addTab(makePage(tabs, hotkeysForm), QStringLiteral("Hotkeys"));
 
+    allowedAppsEdit_ = new QPlainTextEdit();
+    allowedAppsEdit_->setPlaceholderText(QStringLiteral("org.telegram.desktop\ncode\nfirefox"));
+    allowedWindowClassesEdit_ = new QPlainTextEdit();
+    allowedWindowClassesEdit_->setPlaceholderText(QStringLiteral("code\nfirefox"));
     excludedAppsEdit_ = new QPlainTextEdit();
     excludedAppsEdit_->setPlaceholderText(QStringLiteral("konsole\nalacritty\nsteam_app_*"));
     excludedWindowClassesEdit_ = new QPlainTextEdit();
@@ -74,6 +80,10 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     excludeTerminalsCheckBox_ = new QCheckBox(QStringLiteral("Exclude terminals"));
     excludeFullscreenCheckBox_ = new QCheckBox(QStringLiteral("Exclude fullscreen applications"));
     auto* exclusionsLayout = new QVBoxLayout();
+    exclusionsLayout->addWidget(new QLabel(QStringLiteral("Allowed process names / masks")));
+    exclusionsLayout->addWidget(allowedAppsEdit_);
+    exclusionsLayout->addWidget(new QLabel(QStringLiteral("Allowed window classes / masks")));
+    exclusionsLayout->addWidget(allowedWindowClassesEdit_);
     exclusionsLayout->addWidget(new QLabel(QStringLiteral("Excluded process names / masks")));
     exclusionsLayout->addWidget(excludedAppsEdit_);
     exclusionsLayout->addWidget(new QLabel(QStringLiteral("Excluded window classes / masks")));
@@ -88,6 +98,13 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     preservePunctuationCheckBox_ = new QCheckBox(QStringLiteral("Preserve punctuation"));
     autoConvertCheckBox_ = new QCheckBox(QStringLiteral("Enable automatic conversion heuristics"));
     heuristicsCheckBox_ = new QCheckBox(QStringLiteral("Enable layout heuristics"));
+    autoConvertDelayCombo_ = new QComboBox();
+    autoConvertDelayCombo_->addItem(QStringLiteral("150 ms"), 150);
+    autoConvertDelayCombo_->addItem(QStringLiteral("250 ms"), 250);
+    autoConvertDelayCombo_->addItem(QStringLiteral("350 ms"), 350);
+    autoConvertDelayCombo_->addItem(QStringLiteral("450 ms"), 450);
+    autoConvertDelayCombo_->addItem(QStringLiteral("600 ms"), 600);
+    autoConvertDelayCombo_->addItem(QStringLiteral("800 ms"), 800);
     auto* behaviorLayout = new QVBoxLayout();
     behaviorLayout->addWidget(rememberPerWindowCheckBox_);
     behaviorLayout->addWidget(rememberPerAppCheckBox_);
@@ -95,6 +112,8 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     behaviorLayout->addWidget(preservePunctuationCheckBox_);
     behaviorLayout->addWidget(autoConvertCheckBox_);
     behaviorLayout->addWidget(heuristicsCheckBox_);
+    behaviorLayout->addWidget(new QLabel(QStringLiteral("Automatic conversion delay")));
+    behaviorLayout->addWidget(autoConvertDelayCombo_);
     behaviorLayout->addStretch();
     tabs->addTab(makePage(tabs, behaviorLayout), QStringLiteral("Behavior"));
 
@@ -155,6 +174,7 @@ void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& c
     rememberPerAppCheckBox_->setChecked(config.rememberLayoutPerApp);
     notificationsCheckBox_->setChecked(config.notificationsEnabled);
     autostartCheckBox_->setChecked(config.autoStart);
+    requireAllowedTargetsCheckBox_->setChecked(config.requireAllowedTargets);
     excludeTerminalsCheckBox_->setChecked(config.excludeTerminals);
     excludeFullscreenCheckBox_->setChecked(config.excludeFullscreen);
     toggleLayoutShortcut_->setKeySequence(QKeySequence::fromString(config.hotkeys.toggleLayout, QKeySequence::PortableText));
@@ -162,12 +182,16 @@ void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& c
     convertSelectionShortcut_->setKeySequence(QKeySequence::fromString(config.hotkeys.convertSelection, QKeySequence::PortableText));
     openSettingsShortcut_->setKeySequence(QKeySequence::fromString(config.hotkeys.openSettings, QKeySequence::PortableText));
     toggleEnabledShortcut_->setKeySequence(QKeySequence::fromString(config.hotkeys.toggleEnabled, QKeySequence::PortableText));
+    allowedAppsEdit_->setPlainText(config.allowedApps.join('\n'));
+    allowedWindowClassesEdit_->setPlainText(config.allowedWindowClasses.join('\n'));
     excludedAppsEdit_->setPlainText(config.excludedApps.join('\n'));
     excludedWindowClassesEdit_->setPlainText(config.excludedWindowClasses.join('\n'));
     preserveCaseCheckBox_->setChecked(config.conversion.preserveCase);
     preservePunctuationCheckBox_->setChecked(config.conversion.preservePunctuation);
     autoConvertCheckBox_->setChecked(config.conversion.autoConvertEnabled);
     heuristicsCheckBox_->setChecked(config.conversion.heuristicsEnabled);
+    const int delayIndex = qMax(0, autoConvertDelayCombo_->findData(config.conversion.autoConvertDelayMs));
+    autoConvertDelayCombo_->setCurrentIndex(delayIndex);
     loggingLevelCombo_->setCurrentText(FlamentineSwitcher::Core::toString(config.logging.level));
     logFileCheckBox_->setChecked(config.logging.fileEnabled);
 }
@@ -189,6 +213,7 @@ FlamentineSwitcher::Core::AppConfig SettingsWindow::buildConfig() const {
     config.rememberLayoutPerApp = rememberPerAppCheckBox_->isChecked();
     config.notificationsEnabled = notificationsCheckBox_->isChecked();
     config.autoStart = autostartCheckBox_->isChecked();
+    config.requireAllowedTargets = requireAllowedTargetsCheckBox_->isChecked();
     config.excludeTerminals = excludeTerminalsCheckBox_->isChecked();
     config.excludeFullscreen = excludeFullscreenCheckBox_->isChecked();
     config.hotkeys.toggleLayout = toggleLayoutShortcut_->keySequence().toString(QKeySequence::PortableText);
@@ -196,12 +221,15 @@ FlamentineSwitcher::Core::AppConfig SettingsWindow::buildConfig() const {
     config.hotkeys.convertSelection = convertSelectionShortcut_->keySequence().toString(QKeySequence::PortableText);
     config.hotkeys.openSettings = openSettingsShortcut_->keySequence().toString(QKeySequence::PortableText);
     config.hotkeys.toggleEnabled = toggleEnabledShortcut_->keySequence().toString(QKeySequence::PortableText);
+    config.allowedApps = Utils::StringUtils::splitLines(allowedAppsEdit_->toPlainText());
+    config.allowedWindowClasses = Utils::StringUtils::splitLines(allowedWindowClassesEdit_->toPlainText());
     config.excludedApps = Utils::StringUtils::splitLines(excludedAppsEdit_->toPlainText());
     config.excludedWindowClasses = Utils::StringUtils::splitLines(excludedWindowClassesEdit_->toPlainText());
     config.conversion.preserveCase = preserveCaseCheckBox_->isChecked();
     config.conversion.preservePunctuation = preservePunctuationCheckBox_->isChecked();
     config.conversion.autoConvertEnabled = autoConvertCheckBox_->isChecked();
     config.conversion.heuristicsEnabled = heuristicsCheckBox_->isChecked();
+    config.conversion.autoConvertDelayMs = autoConvertDelayCombo_->currentData().toInt();
     config.logging.level = FlamentineSwitcher::Core::logLevelFromString(loggingLevelCombo_->currentText());
     config.logging.fileEnabled = logFileCheckBox_->isChecked();
     return config;
@@ -243,4 +271,3 @@ void SettingsWindow::syncDefaultLayoutChoices() {
 }
 
 }  // namespace FlamentineSwitcher::Ui
-

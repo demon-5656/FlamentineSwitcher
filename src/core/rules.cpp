@@ -44,5 +44,30 @@ bool Rules::isExcluded(const AppConfig& config, const WindowContext& context) {
     return config.excludeTerminals && Utils::ProcessInfo::isTerminalApp(context.appName);
 }
 
-}  // namespace FlamentineSwitcher::Core
+bool Rules::isAllowed(const AppConfig& config, const WindowContext& context) {
+    if (isExcluded(config, context)) {
+        return false;
+    }
 
+    if (!config.requireAllowedTargets) {
+        return true;
+    }
+
+    const bool hasKnownTarget =
+        !context.appName.trimmed().isEmpty() || !context.windowClass.trimmed().isEmpty() || !context.windowId.trimmed().isEmpty();
+    if (!hasKnownTarget) {
+        return false;
+    }
+
+    if (matchesAnyPattern(context.appName, config.allowedApps)) {
+        return true;
+    }
+
+    if (matchesAnyPattern(context.windowClass, config.allowedWindowClasses)) {
+        return true;
+    }
+
+    return false;
+}
+
+}  // namespace FlamentineSwitcher::Core

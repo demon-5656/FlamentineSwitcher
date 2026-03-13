@@ -61,12 +61,14 @@ add_library(flamentine_backends
     include/flamentine_switcher/backends/layout/wayland_layout_backend.h
     include/flamentine_switcher/backends/window/iwindow_backend.h
     include/flamentine_switcher/backends/window/fallback_window_backend.h
+    include/flamentine_switcher/backends/window/x11_window_backend.h
     include/flamentine_switcher/backends/hotkeys/ihotkey_backend.h
     include/flamentine_switcher/backends/hotkeys/x11_hotkey_backend.h
     include/flamentine_switcher/backends/hotkeys/noop_hotkey_backend.h
     src/backends/layout/x11_layout_backend.cpp
     src/backends/layout/wayland_layout_backend.cpp
     src/backends/window/fallback_window_backend.cpp
+    src/backends/window/x11_window_backend.cpp
     src/backends/hotkeys/x11_hotkey_backend.cpp
     src/backends/hotkeys/noop_hotkey_backend.cpp
 )
@@ -158,4 +160,9 @@ if(BUILD_TESTING)
     target_include_directories(heuristics_tests PRIVATE include)
     target_link_libraries(heuristics_tests PRIVATE Qt6::Test flamentine_conversion)
     add_test(NAME heuristics_tests COMMAND heuristics_tests)
+
+    qt_add_executable(rules_tests tests/rules_tests.cpp)
+    target_include_directories(rules_tests PRIVATE include)
+    target_link_libraries(rules_tests PRIVATE Qt6::Test flamentine_core)
+    add_test(NAME rules_tests COMMAND rules_tests)
 endif()
