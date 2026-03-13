@@ -4,6 +4,7 @@
 #include <QComboBox>
 #include <QFileDialog>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QKeySequenceEdit>
 #include <QLabel>
@@ -38,12 +39,10 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     enabledCheckBox_ = new QCheckBox(QStringLiteral("Enable application"));
     notificationsCheckBox_ = new QCheckBox(QStringLiteral("Enable notifications"));
     autostartCheckBox_ = new QCheckBox(QStringLiteral("Start automatically in the Plasma session"));
-    requireAllowedTargetsCheckBox_ = new QCheckBox(QStringLiteral("Deny by default, only operate in explicitly allowed targets"));
     auto* generalLayout = new QVBoxLayout();
     generalLayout->addWidget(enabledCheckBox_);
     generalLayout->addWidget(notificationsCheckBox_);
     generalLayout->addWidget(autostartCheckBox_);
-    generalLayout->addWidget(requireAllowedTargetsCheckBox_);
     generalLayout->addStretch();
     tabs->addTab(makePage(tabs, generalLayout), QStringLiteral("General"));
 
@@ -69,6 +68,12 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     hotkeysForm->addRow(QStringLiteral("Toggle enabled"), toggleEnabledShortcut_);
     tabs->addTab(makePage(tabs, hotkeysForm), QStringLiteral("Hotkeys"));
 
+    targetPolicyCombo_ = new QComboBox();
+    targetPolicyCombo_->addItem(QStringLiteral("Explicit allowlist only"), true);
+    targetPolicyCombo_->addItem(QStringLiteral("Allow everywhere except blocked"), false);
+    targetPolicyHintLabel_ = new QLabel();
+    targetPolicyHintLabel_->setWordWrap(true);
+
     allowedAppsEdit_ = new QPlainTextEdit();
     allowedAppsEdit_->setPlaceholderText(QStringLiteral("org.telegram.desktop\ncode\nfirefox"));
     allowedWindowClassesEdit_ = new QPlainTextEdit();
@@ -79,18 +84,32 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     excludedWindowClassesEdit_->setPlaceholderText(QStringLiteral("yakuake"));
     excludeTerminalsCheckBox_ = new QCheckBox(QStringLiteral("Exclude terminals"));
     excludeFullscreenCheckBox_ = new QCheckBox(QStringLiteral("Exclude fullscreen applications"));
-    auto* exclusionsLayout = new QVBoxLayout();
-    exclusionsLayout->addWidget(new QLabel(QStringLiteral("Allowed process names / masks")));
-    exclusionsLayout->addWidget(allowedAppsEdit_);
-    exclusionsLayout->addWidget(new QLabel(QStringLiteral("Allowed window classes / masks")));
-    exclusionsLayout->addWidget(allowedWindowClassesEdit_);
-    exclusionsLayout->addWidget(new QLabel(QStringLiteral("Excluded process names / masks")));
-    exclusionsLayout->addWidget(excludedAppsEdit_);
-    exclusionsLayout->addWidget(new QLabel(QStringLiteral("Excluded window classes / masks")));
-    exclusionsLayout->addWidget(excludedWindowClassesEdit_);
-    exclusionsLayout->addWidget(excludeTerminalsCheckBox_);
-    exclusionsLayout->addWidget(excludeFullscreenCheckBox_);
-    tabs->addTab(makePage(tabs, exclusionsLayout), QStringLiteral("Exclusions"));
+
+    auto* policyForm = new QFormLayout();
+    policyForm->addRow(QStringLiteral("Policy mode"), targetPolicyCombo_);
+
+    auto* allowedGroup = new QGroupBox(QStringLiteral("Allowed Targets"));
+    auto* allowedLayout = new QVBoxLayout(allowedGroup);
+    allowedLayout->addWidget(new QLabel(QStringLiteral("Process names or masks")));
+    allowedLayout->addWidget(allowedAppsEdit_);
+    allowedLayout->addWidget(new QLabel(QStringLiteral("Window classes or masks")));
+    allowedLayout->addWidget(allowedWindowClassesEdit_);
+
+    auto* blockedGroup = new QGroupBox(QStringLiteral("Blocked Targets"));
+    auto* blockedLayout = new QVBoxLayout(blockedGroup);
+    blockedLayout->addWidget(new QLabel(QStringLiteral("Process names or masks")));
+    blockedLayout->addWidget(excludedAppsEdit_);
+    blockedLayout->addWidget(new QLabel(QStringLiteral("Window classes or masks")));
+    blockedLayout->addWidget(excludedWindowClassesEdit_);
+    blockedLayout->addWidget(excludeTerminalsCheckBox_);
+    blockedLayout->addWidget(excludeFullscreenCheckBox_);
+
+    auto* targetsLayout = new QVBoxLayout();
+    targetsLayout->addLayout(policyForm);
+    targetsLayout->addWidget(targetPolicyHintLabel_);
+    targetsLayout->addWidget(allowedGroup);
+    targetsLayout->addWidget(blockedGroup);
+    tabs->addTab(makePage(tabs, targetsLayout), QStringLiteral("Targets"));
 
     rememberPerWindowCheckBox_ = new QCheckBox(QStringLiteral("Remember layout per window"));
     rememberPerAppCheckBox_ = new QCheckBox(QStringLiteral("Remember layout per application"));
@@ -159,10 +178,13 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     rootLayout->addLayout(buttonsLayout);
 
     connect(layoutsEdit_, &QLineEdit::textChanged, this, &SettingsWindow::syncDefaultLayoutChoices);
+    connect(targetPolicyCombo_, &QComboBox::currentIndexChanged, this, &SettingsWindow::syncTargetPolicyUi);
     connect(importButton_, &QPushButton::clicked, this, &SettingsWindow::chooseImportFile);
     connect(exportButton_, &QPushButton::clicked, this, &SettingsWindow::chooseExportFile);
     connect(applyButton_, &QPushButton::clicked, this, &SettingsWindow::apply);
     connect(closeButton, &QPushButton::clicked, this, &QDialog::hide);
+
+    syncTargetPolicyUi();
 }
 
 void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& config) {
@@ -174,7 +196,8 @@ void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& c
     rememberPerAppCheckBox_->setChecked(config.rememberLayoutPerApp);
     notificationsCheckBox_->setChecked(config.notificationsEnabled);
     autostartCheckBox_->setChecked(config.autoStart);
-    requireAllowedTargetsCheckBox_->setChecked(config.requireAllowedTargets);
+    const int policyIndex = qMax(0, targetPolicyCombo_->findData(config.requireAllowedTargets));
+    targetPolicyCombo_->setCurrentIndex(policyIndex);
     excludeTerminalsCheckBox_->setChecked(config.excludeTerminals);
     excludeFullscreenCheckBox_->setChecked(config.excludeFullscreen);
     toggleLayoutShortcut_->setKeySequence(QKeySequence::fromString(config.hotkeys.toggleLayout, QKeySequence::PortableText));
@@ -194,6 +217,7 @@ void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& c
     autoConvertDelayCombo_->setCurrentIndex(delayIndex);
     loggingLevelCombo_->setCurrentText(FlamentineSwitcher::Core::toString(config.logging.level));
     logFileCheckBox_->setChecked(config.logging.fileEnabled);
+    syncTargetPolicyUi();
 }
 
 FlamentineSwitcher::Core::AppConfig SettingsWindow::buildConfig() const {
@@ -213,7 +237,7 @@ FlamentineSwitcher::Core::AppConfig SettingsWindow::buildConfig() const {
     config.rememberLayoutPerApp = rememberPerAppCheckBox_->isChecked();
     config.notificationsEnabled = notificationsCheckBox_->isChecked();
     config.autoStart = autostartCheckBox_->isChecked();
-    config.requireAllowedTargets = requireAllowedTargetsCheckBox_->isChecked();
+    config.requireAllowedTargets = targetPolicyCombo_->currentData().toBool();
     config.excludeTerminals = excludeTerminalsCheckBox_->isChecked();
     config.excludeFullscreen = excludeFullscreenCheckBox_->isChecked();
     config.hotkeys.toggleLayout = toggleLayoutShortcut_->keySequence().toString(QKeySequence::PortableText);
@@ -268,6 +292,18 @@ void SettingsWindow::syncDefaultLayoutChoices() {
     defaultLayoutCombo_->addItems(layouts);
     defaultLayoutCombo_->setCurrentText(current);
     defaultLayoutCombo_->blockSignals(false);
+}
+
+void SettingsWindow::syncTargetPolicyUi() {
+    const bool allowlistOnly = targetPolicyCombo_->currentData().toBool();
+    allowedAppsEdit_->setEnabled(allowlistOnly);
+    allowedWindowClassesEdit_->setEnabled(allowlistOnly);
+    targetPolicyHintLabel_->setText(
+        allowlistOnly
+            ? QStringLiteral("Only listed processes or window classes may trigger layout switching and text conversion. "
+                             "Blocked rules still take priority.")
+            : QStringLiteral("The application may operate in any target except blocked ones. Allowed lists stay in the config "
+                             "but are currently inactive."));
 }
 
 }  // namespace FlamentineSwitcher::Ui

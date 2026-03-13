@@ -23,6 +23,7 @@ This repository now contains the initial project skeleton plus an MVP-oriented f
 - X11 active-window backend for app-aware policy decisions
 - global X11 hotkey backend based on `XGrabKey`
 - delayed X11 typed-word observation and replacement for allowed applications only
+- per-window and per-app layout memory for allowed X11 targets
 - tray icon and settings window
 - text converter for `us <-> ru`
 - D-Bus service skeleton
@@ -34,6 +35,7 @@ The current text conversion workflow is intentionally conservative:
 - last-word conversion currently transforms the last clipboard token
 - when deny-by-default mode is enabled, conversion is blocked unless the active target is explicitly allowed
 - X11 delayed auto-conversion only buffers committed words in explicitly allowed targets and cancels replacement if typing continues
+- target policy UI now exposes an explicit allowlist-only mode instead of a hidden checkbox
 - Wayland stays in the safe/manual mode without low-level text interception
 
 ## Build
@@ -50,6 +52,12 @@ Configure and build:
 cmake -S . -B build
 cmake --build build
 ctest --test-dir build --output-on-failure
+```
+
+Controlled X11 end-to-end check for delayed replacement:
+
+```bash
+tests/run_x11_delayed_replacement_e2e.sh ./build/flamentine-switcher ./build/x11_text_target "$DISPLAY"
 ```
 
 Run:
@@ -76,6 +84,7 @@ X11 is still the primary target for the full MVP:
 - layout switching
 - global hotkeys
 - delayed automatic word replacement in explicitly allowed applications
+- remembered layouts per window or per application
 
 Wayland support in KDE Plasma is now usable for safe/manual flows:
 

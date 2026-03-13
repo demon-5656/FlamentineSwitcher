@@ -43,6 +43,7 @@ target_link_libraries(flamentine_conversion PUBLIC Qt6::Core flamentine_utils)
 add_library(flamentine_core
     include/flamentine_switcher/core/application_controller.h
     src/core/config.cpp
+    src/core/layout_memory.cpp
     src/core/settings_manager.cpp
     src/core/rules.cpp
     src/core/application_controller.cpp
@@ -174,4 +175,13 @@ if(BUILD_TESTING)
     target_include_directories(rules_tests PRIVATE include)
     target_link_libraries(rules_tests PRIVATE Qt6::Test flamentine_core)
     add_test(NAME rules_tests COMMAND rules_tests)
+
+    qt_add_executable(layout_memory_tests tests/layout_memory_tests.cpp)
+    target_include_directories(layout_memory_tests PRIVATE include)
+    target_link_libraries(layout_memory_tests PRIVATE Qt6::Test flamentine_core)
+    add_test(NAME layout_memory_tests COMMAND layout_memory_tests)
+
+    qt_add_executable(x11_text_target tests/x11_text_target.cpp)
+    target_include_directories(x11_text_target PRIVATE include)
+    target_link_libraries(x11_text_target PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
 endif()

@@ -10,6 +10,7 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 - `SettingsManager` loads, validates and stores JSON configuration.
 - `ApplicationController` coordinates UI, backends and service entry points.
 - `Rules` contains future-safe logic for exclusions and window-based behavior.
+- `LayoutMemory` keeps per-window and per-app layout state outside the backend layer.
 
 ### Backends
 
@@ -44,6 +45,7 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 4. The layout backend refreshes the current layout state and the tray reflects it.
 5. Manual conversion requests still use the clipboard-safe workflow.
 6. On X11, the text-input backend can observe committed words in allowed targets and schedule delayed replacement after a pause.
+7. On X11, the controller can restore remembered layouts when focus moves between allowed windows or applications.
 
 ## Why this split
 

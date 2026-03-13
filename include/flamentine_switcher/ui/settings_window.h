@@ -7,6 +7,7 @@
 class QCheckBox;
 class QComboBox;
 class QKeySequenceEdit;
+class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
 class QPushButton;
@@ -32,6 +33,7 @@ private slots:
     void chooseImportFile();
     void chooseExportFile();
     void syncDefaultLayoutChoices();
+    void syncTargetPolicyUi();
 
 private:
     QCheckBox* enabledCheckBox_ = nullptr;
@@ -41,7 +43,8 @@ private:
     QCheckBox* rememberPerAppCheckBox_ = nullptr;
     QCheckBox* notificationsCheckBox_ = nullptr;
     QCheckBox* autostartCheckBox_ = nullptr;
-    QCheckBox* requireAllowedTargetsCheckBox_ = nullptr;
+    QComboBox* targetPolicyCombo_ = nullptr;
+    QLabel* targetPolicyHintLabel_ = nullptr;
     QCheckBox* excludeTerminalsCheckBox_ = nullptr;
     QCheckBox* excludeFullscreenCheckBox_ = nullptr;
     QKeySequenceEdit* toggleLayoutShortcut_ = nullptr;

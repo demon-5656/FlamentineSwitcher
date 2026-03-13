@@ -4,6 +4,7 @@
 #include <QTimer>
 
 #include "flamentine_switcher/core/config.h"
+#include "flamentine_switcher/core/layout_memory.h"
 #include "flamentine_switcher/core/models.h"
 #include "flamentine_switcher/conversion/text_converter.h"
 
@@ -92,6 +93,7 @@ private:
     QString clipboardText() const;
     void replaceClipboardText(const QString& text) const;
     void registerHotkeys();
+    void syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId);
     void updateTextInputBackendState();
     QString targetLayoutIdForDirection(Conversion::ConversionDirection direction) const;
     void notifyInfo(const QString& message) const;
@@ -107,11 +109,14 @@ private:
     Ui::SettingsWindow& settingsWindow_;
     Ui::Notifications& notifications_;
     Conversion::TextConverter textConverter_;
+    LayoutMemory layoutMemory_;
     AppConfig config_;
     QString lastError_;
     QTimer refreshTimer_;
     QTimer autoConvertTimer_;
     PendingAutoConversion pendingAutoConversion_;
+    WindowContext lastWindowContext_;
+    bool syncingRememberedLayout_ = false;
 };
 
 }  // namespace FlamentineSwitcher::Core

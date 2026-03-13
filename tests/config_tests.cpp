@@ -19,6 +19,8 @@ void ConfigTests::defaultsRoundTrip() {
     QCOMPARE(roundTrip.hotkeys.toggleLayout, defaults.hotkeys.toggleLayout);
     QCOMPARE(roundTrip.requireAllowedTargets, defaults.requireAllowedTargets);
     QCOMPARE(roundTrip.conversion.autoConvertDelayMs, defaults.conversion.autoConvertDelayMs);
+    QCOMPARE(roundTrip.rememberLayoutPerWindow, defaults.rememberLayoutPerWindow);
+    QCOMPARE(roundTrip.rememberLayoutPerApp, defaults.rememberLayoutPerApp);
 }
 
 void ConfigTests::loadsCustomValues() {
@@ -51,4 +53,3 @@ void ConfigTests::loadsCustomValues() {
 QTEST_APPLESS_MAIN(ConfigTests)
 
 #include "config_tests.moc"
-

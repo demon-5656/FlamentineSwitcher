@@ -19,6 +19,15 @@
 
 namespace FlamentineSwitcher::Core {
 
+namespace {
+
+bool sameWindowTarget(const WindowContext& left, const WindowContext& right) {
+    return left.windowId == right.windowId && left.appName == right.appName && left.windowClass == right.windowClass
+        && left.fullscreen == right.fullscreen;
+}
+
+}  // namespace
+
 ApplicationController::ApplicationController(SettingsManager& settingsManager,
                                              Services::AutostartService& autostartService,
                                              Backends::Layout::ILayoutBackend& layoutBackend,
@@ -234,6 +243,11 @@ void ApplicationController::exportConfig(const QString& filePath) {
 }
 
 void ApplicationController::refreshLayout() {
+    const QString currentLayoutId = layoutBackend_.currentLayoutId();
+    if (!syncingRememberedLayout_) {
+        syncRememberedLayout(windowBackend_.currentContext(), currentLayoutId);
+    }
+
     const QString layoutId = layoutBackend_.currentLayoutId();
     trayIcon_.setCurrentLayout(layoutId.isEmpty() ? QStringLiteral("--") : layoutId);
     emit layoutChanged(layoutId);
@@ -301,12 +315,45 @@ void ApplicationController::registerHotkeys() {
     }
 }
 
+void ApplicationController::syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId) {
+    const bool rememberEnabled = config_.rememberLayoutPerWindow || config_.rememberLayoutPerApp;
+    if (!rememberEnabled) {
+        lastWindowContext_ = context;
+        return;
+    }
+
+    const bool targetChanged = !sameWindowTarget(lastWindowContext_, context);
+    if (targetChanged) {
+        lastWindowContext_ = context;
+        if (!Rules::isAllowed(config_, context)) {
+            return;
+        }
+
+        const auto rememberedLayout = layoutMemory_.recall(config_, context);
+        if (!rememberedLayout.has_value() || rememberedLayout.value() == currentLayoutId) {
+            return;
+        }
+
+        syncingRememberedLayout_ = true;
+        layoutBackend_.setLayout(rememberedLayout.value());
+        syncingRememberedLayout_ = false;
+        return;
+    }
+
+    if (Rules::isAllowed(config_, context) && !currentLayoutId.trimmed().isEmpty()) {
+        layoutMemory_.remember(config_, context, currentLayoutId);
+    }
+}
+
 void ApplicationController::updateTextInputBackendState() {
     textInputBackend_.applyConfig(config_);
     const bool shouldObserve = config_.enabled && config_.conversion.autoConvertEnabled;
     if (!shouldObserve) {
         pendingAutoConversion_ = {};
         autoConvertTimer_.stop();
+    }
+    if (!config_.rememberLayoutPerWindow && !config_.rememberLayoutPerApp) {
+        layoutMemory_.clear();
     }
     textInputBackend_.setEnabled(shouldObserve);
 }
