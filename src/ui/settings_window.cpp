@@ -96,7 +96,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     rememberPerAppCheckBox_ = new QCheckBox(QStringLiteral("Remember layout per application"));
     preserveCaseCheckBox_ = new QCheckBox(QStringLiteral("Preserve case"));
     preservePunctuationCheckBox_ = new QCheckBox(QStringLiteral("Preserve punctuation"));
-    autoConvertCheckBox_ = new QCheckBox(QStringLiteral("Enable automatic conversion heuristics"));
+    autoConvertCheckBox_ = new QCheckBox(QStringLiteral("Enable delayed automatic conversion on X11"));
     heuristicsCheckBox_ = new QCheckBox(QStringLiteral("Enable layout heuristics"));
     autoConvertDelayCombo_ = new QComboBox();
     autoConvertDelayCombo_->addItem(QStringLiteral("150 ms"), 150);

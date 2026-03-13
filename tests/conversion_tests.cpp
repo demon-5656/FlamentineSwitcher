@@ -9,6 +9,7 @@ private slots:
     void convertsEnglishLayoutMistype();
     void convertsRussianLayoutMistype();
     void convertsLastWord();
+    void resolvesDirection();
 };
 
 void ConversionTests::convertsEnglishLayoutMistype() {
@@ -26,7 +27,12 @@ void ConversionTests::convertsLastWord() {
     QCOMPARE(converter.convertLastWordInText(QStringLiteral("say ghbdtn")), QStringLiteral("say привет"));
 }
 
+void ConversionTests::resolvesDirection() {
+    FlamentineSwitcher::Conversion::TextConverter converter;
+    QCOMPARE(converter.resolveDirection(QStringLiteral("ghbdtn")), FlamentineSwitcher::Conversion::ConversionDirection::UsToRu);
+    QCOMPARE(converter.resolveDirection(QStringLiteral("руддщ")), FlamentineSwitcher::Conversion::ConversionDirection::RuToUs);
+}
+
 QTEST_APPLESS_MAIN(ConversionTests)
 
 #include "conversion_tests.moc"
-

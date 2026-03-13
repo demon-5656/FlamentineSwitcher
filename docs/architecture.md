@@ -19,6 +19,8 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 - `IHotkeyBackend` abstracts global shortcuts.
 - `X11HotkeyBackend` uses passive grabs on X11.
 - `IWindowBackend` is reserved for per-window and per-app memory logic.
+- `ITextInputBackend` abstracts typed-word observation and delayed replacement.
+- `X11TextInputBackend` observes committed words on X11 and only keeps state for allowlisted targets.
 
 ### Conversion
 
@@ -40,7 +42,8 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 2. The controller selects session-appropriate backends.
 3. Tray, settings, D-Bus and hotkeys are connected to controller slots.
 4. The layout backend refreshes the current layout state and the tray reflects it.
-5. Conversion requests use the clipboard-based safe workflow until a stronger text-target backend is added.
+5. Manual conversion requests still use the clipboard-safe workflow.
+6. On X11, the text-input backend can observe committed words in allowed targets and schedule delayed replacement after a pause.
 
 ## Why this split
 
@@ -48,4 +51,3 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 - Wayland limitations stay localized to backend capability checks.
 - The conversion engine is testable without any UI.
 - Settings format and migration logic stay independent from widgets.
-

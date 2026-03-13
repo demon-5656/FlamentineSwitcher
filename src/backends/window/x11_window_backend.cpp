@@ -115,6 +115,11 @@ FlamentineSwitcher::Core::WindowContext X11WindowBackend::currentContext() const
         return context;
     }
 
+    if (activeWindow == cachedWindow_) {
+        lastError_.clear();
+        return cachedContext_;
+    }
+
     context.windowId = QStringLiteral("0x%1").arg(static_cast<qulonglong>(activeWindow), 0, 16);
 
     XClassHint classHint {};
@@ -161,6 +166,8 @@ FlamentineSwitcher::Core::WindowContext X11WindowBackend::currentContext() const
     }
 
     lastError_.clear();
+    cachedWindow_ = activeWindow;
+    cachedContext_ = context;
     return context;
 }
 

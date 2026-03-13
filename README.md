@@ -22,6 +22,7 @@ This repository now contains the initial project skeleton plus an MVP-oriented f
 - deny-by-default target policy with explicit allowlists for applications and window classes
 - X11 active-window backend for app-aware policy decisions
 - global X11 hotkey backend based on `XGrabKey`
+- delayed X11 typed-word observation and replacement for allowed applications only
 - tray icon and settings window
 - text converter for `us <-> ru`
 - D-Bus service skeleton
@@ -32,15 +33,15 @@ The current text conversion workflow is intentionally conservative:
 - selection conversion operates on X11 selection clipboard or regular clipboard
 - last-word conversion currently transforms the last clipboard token
 - when deny-by-default mode is enabled, conversion is blocked unless the active target is explicitly allowed
-- no unsafe global keylogging is used
-- `autoConvertDelayMs` is already stored in config, but live typed-text observation is still pending a dedicated X11-only backend
+- X11 delayed auto-conversion only buffers committed words in explicitly allowed targets and cancels replacement if typing continues
+- Wayland stays in the safe/manual mode without low-level text interception
 
 ## Build
 
 Install dependencies on Arch Linux:
 
 ```bash
-sudo pacman -S --needed base-devel cmake qt6-base libx11 libxkbfile
+sudo pacman -S --needed base-devel cmake qt6-base libx11 libxkbfile libxi libxtst
 ```
 
 Configure and build:
@@ -61,6 +62,7 @@ Run:
 
 - `include/flamentine_switcher/core`: config, settings manager, orchestration
 - `include/flamentine_switcher/backends`: layout, hotkeys, window context abstractions
+- `include/flamentine_switcher/backends/text`: typed-text observation and delayed replacement backends
 - `include/flamentine_switcher/conversion`: layout maps, converter, heuristics
 - `include/flamentine_switcher/ui`: tray icon, settings window, notifications
 - `include/flamentine_switcher/services`: D-Bus and autostart services
@@ -73,6 +75,7 @@ X11 is still the primary target for the full MVP:
 - current layout detection
 - layout switching
 - global hotkeys
+- delayed automatic word replacement in explicitly allowed applications
 
 Wayland support in KDE Plasma is now usable for safe/manual flows:
 

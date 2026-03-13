@@ -11,6 +11,10 @@ namespace FlamentineSwitcher::Backends::Hotkeys {
 class IHotkeyBackend;
 }
 
+namespace FlamentineSwitcher::Backends::Text {
+class ITextInputBackend;
+}
+
 namespace FlamentineSwitcher::Backends::Layout {
 class ILayoutBackend;
 }
@@ -41,6 +45,7 @@ public:
                           Services::AutostartService& autostartService,
                           Backends::Layout::ILayoutBackend& layoutBackend,
                           Backends::Hotkeys::IHotkeyBackend& hotkeyBackend,
+                          Backends::Text::ITextInputBackend& textInputBackend,
                           Backends::Window::IWindowBackend& windowBackend,
                           Ui::TrayIcon& trayIcon,
                           Ui::SettingsWindow& settingsWindow,
@@ -72,12 +77,23 @@ signals:
 private slots:
     void refreshLayout();
     void handleHotkeyAction(FlamentineSwitcher::Core::HotkeyAction action);
+    void handleObservedWordCommitted(quint64 tokenId, const QString& word, const FlamentineSwitcher::Core::WindowContext& context);
+    void processPendingAutoConversion();
 
 private:
+    struct PendingAutoConversion {
+        quint64 tokenId = 0;
+        QString word;
+        WindowContext context;
+        bool valid = false;
+    };
+
     bool setEnabled(bool enabled);
     QString clipboardText() const;
     void replaceClipboardText(const QString& text) const;
     void registerHotkeys();
+    void updateTextInputBackendState();
+    QString targetLayoutIdForDirection(Conversion::ConversionDirection direction) const;
     void notifyInfo(const QString& message) const;
     void notifyWarning(const QString& message) const;
 
@@ -85,6 +101,7 @@ private:
     Services::AutostartService& autostartService_;
     Backends::Layout::ILayoutBackend& layoutBackend_;
     Backends::Hotkeys::IHotkeyBackend& hotkeyBackend_;
+    Backends::Text::ITextInputBackend& textInputBackend_;
     Backends::Window::IWindowBackend& windowBackend_;
     Ui::TrayIcon& trayIcon_;
     Ui::SettingsWindow& settingsWindow_;
@@ -93,6 +110,8 @@ private:
     AppConfig config_;
     QString lastError_;
     QTimer refreshTimer_;
+    QTimer autoConvertTimer_;
+    PendingAutoConversion pendingAutoConversion_;
 };
 
 }  // namespace FlamentineSwitcher::Core

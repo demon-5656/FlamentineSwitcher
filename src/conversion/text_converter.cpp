@@ -50,8 +50,7 @@ QString TextConverter::convertText(const QString& text, ConversionDirection dire
         return {};
     }
 
-    const ConversionDirection resolvedDirection =
-        direction == ConversionDirection::AutoDetect ? autoDirection(text) : direction;
+    const ConversionDirection resolvedDirection = direction == ConversionDirection::AutoDetect ? resolveDirection(text) : direction;
     const LayoutMapSet& maps = usRuMap();
 
     return resolvedDirection == ConversionDirection::UsToRu
@@ -69,7 +68,7 @@ QString TextConverter::convertLastWordInText(const QString& text, ConversionDire
 
     const QString token = match.captured(1);
     const QString suffix = match.captured(2);
-    const QString converted = convertText(token, direction == ConversionDirection::AutoDetect ? autoDirection(token) : direction);
+    const QString converted = convertText(token, direction == ConversionDirection::AutoDetect ? resolveDirection(token) : direction);
 
     QString result = text;
     result.chop(token.size() + suffix.size());
@@ -78,5 +77,8 @@ QString TextConverter::convertLastWordInText(const QString& text, ConversionDire
     return result;
 }
 
-}  // namespace FlamentineSwitcher::Conversion
+ConversionDirection TextConverter::resolveDirection(const QString& text) const {
+    return autoDirection(text);
+}
 
+}  // namespace FlamentineSwitcher::Conversion

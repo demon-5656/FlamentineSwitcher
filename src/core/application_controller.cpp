@@ -6,7 +6,9 @@
 
 #include "flamentine_switcher/backends/hotkeys/ihotkey_backend.h"
 #include "flamentine_switcher/backends/layout/ilayout_backend.h"
+#include "flamentine_switcher/backends/text/itext_input_backend.h"
 #include "flamentine_switcher/backends/window/iwindow_backend.h"
+#include "flamentine_switcher/conversion/heuristics.h"
 #include "flamentine_switcher/core/rules.h"
 #include "flamentine_switcher/core/settings_manager.h"
 #include "flamentine_switcher/services/autostart_service.h"
@@ -21,6 +23,7 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
                                              Services::AutostartService& autostartService,
                                              Backends::Layout::ILayoutBackend& layoutBackend,
                                              Backends::Hotkeys::IHotkeyBackend& hotkeyBackend,
+                                             Backends::Text::ITextInputBackend& textInputBackend,
                                              Backends::Window::IWindowBackend& windowBackend,
                                              Ui::TrayIcon& trayIcon,
                                              Ui::SettingsWindow& settingsWindow,
@@ -31,13 +34,16 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
     , autostartService_(autostartService)
     , layoutBackend_(layoutBackend)
     , hotkeyBackend_(hotkeyBackend)
+    , textInputBackend_(textInputBackend)
     , windowBackend_(windowBackend)
     , trayIcon_(trayIcon)
     , settingsWindow_(settingsWindow)
     , notifications_(notifications) {
     refreshTimer_.setInterval(900);
+    autoConvertTimer_.setSingleShot(true);
 
     connect(&refreshTimer_, &QTimer::timeout, this, &ApplicationController::refreshLayout);
+    connect(&autoConvertTimer_, &QTimer::timeout, this, &ApplicationController::processPendingAutoConversion);
     connect(&trayIcon_, &Ui::TrayIcon::toggleLayoutRequested, this, &ApplicationController::toggleLayout);
     connect(&trayIcon_, &Ui::TrayIcon::convertLastWordRequested, this, &ApplicationController::convertLastWord);
     connect(&trayIcon_, &Ui::TrayIcon::convertSelectionRequested, this, &ApplicationController::convertSelection);
@@ -51,6 +57,10 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
     connect(&settingsWindow_, &Ui::SettingsWindow::exportRequested, this, &ApplicationController::exportConfig);
     connect(&hotkeyBackend_, &Backends::Hotkeys::IHotkeyBackend::hotkeyTriggered, this, &ApplicationController::handleHotkeyAction);
     connect(&layoutBackend_, &Backends::Layout::ILayoutBackend::layoutChanged, this, &ApplicationController::refreshLayout);
+    connect(&textInputBackend_,
+            &Backends::Text::ITextInputBackend::wordCommitted,
+            this,
+            &ApplicationController::handleObservedWordCommitted);
 }
 
 void ApplicationController::initialize() {
@@ -60,6 +70,7 @@ void ApplicationController::initialize() {
     trayIcon_.setEnabledState(config_.enabled);
     autostartService_.setEnabled(config_.autoStart);
     registerHotkeys();
+    updateTextInputBackendState();
     trayIcon_.show();
     refreshLayout();
     refreshTimer_.start();
@@ -72,6 +83,9 @@ void ApplicationController::initialize() {
     }
     if (!windowBackend_.isSupported() && config_.requireAllowedTargets) {
         notifyWarning(QStringLiteral("Window backend is unavailable, deny-by-default policy will block conversion actions"));
+    }
+    if (config_.conversion.autoConvertEnabled && !textInputBackend_.isSupported()) {
+        notifyWarning(QStringLiteral("Delayed automatic conversion is unavailable: %1").arg(textInputBackend_.lastError()));
     }
 }
 
@@ -194,6 +208,7 @@ void ApplicationController::applyConfig(const AppConfig& config) {
     settingsWindow_.loadFromConfig(config_);
     trayIcon_.setEnabledState(config_.enabled);
     registerHotkeys();
+    updateTextInputBackendState();
     refreshLayout();
     emit enabledChanged(config_.enabled);
 }
@@ -246,8 +261,11 @@ void ApplicationController::handleHotkeyAction(const FlamentineSwitcher::Core::H
 
 bool ApplicationController::setEnabled(const bool enabled) {
     config_.enabled = enabled;
+    pendingAutoConversion_ = {};
+    autoConvertTimer_.stop();
     trayIcon_.setEnabledState(enabled);
     settingsWindow_.loadFromConfig(config_);
+    updateTextInputBackendState();
     if (!settingsManager_.save(config_)) {
         notifyWarning(settingsManager_.lastError());
     }
@@ -281,6 +299,90 @@ void ApplicationController::registerHotkeys() {
     if (!hotkeyBackend_.registerHotkeys(shortcuts) && hotkeyBackend_.isSupported()) {
         notifyWarning(hotkeyBackend_.lastError());
     }
+}
+
+void ApplicationController::updateTextInputBackendState() {
+    textInputBackend_.applyConfig(config_);
+    const bool shouldObserve = config_.enabled && config_.conversion.autoConvertEnabled;
+    if (!shouldObserve) {
+        pendingAutoConversion_ = {};
+        autoConvertTimer_.stop();
+    }
+    textInputBackend_.setEnabled(shouldObserve);
+}
+
+QString ApplicationController::targetLayoutIdForDirection(const Conversion::ConversionDirection direction) const {
+    return direction == Conversion::ConversionDirection::UsToRu ? QStringLiteral("ru") : QStringLiteral("us");
+}
+
+void ApplicationController::handleObservedWordCommitted(const quint64 tokenId,
+                                                        const QString& word,
+                                                        const FlamentineSwitcher::Core::WindowContext& context) {
+    if (!config_.enabled || !config_.conversion.autoConvertEnabled) {
+        return;
+    }
+
+    if (!Rules::isAllowed(config_, context)) {
+        return;
+    }
+
+    pendingAutoConversion_.tokenId = tokenId;
+    pendingAutoConversion_.word = word;
+    pendingAutoConversion_.context = context;
+    pendingAutoConversion_.valid = true;
+    autoConvertTimer_.start(qMax(0, config_.conversion.autoConvertDelayMs));
+}
+
+void ApplicationController::processPendingAutoConversion() {
+    if (!pendingAutoConversion_.valid || !config_.enabled || !config_.conversion.autoConvertEnabled) {
+        pendingAutoConversion_ = {};
+        return;
+    }
+
+    using namespace FlamentineSwitcher::Conversion;
+
+    ConversionDirection direction = ConversionDirection::AutoDetect;
+    if (config_.conversion.heuristicsEnabled) {
+        const LayoutHeuristics heuristics;
+        const LayoutAssessment assessment = heuristics.assessWord(pendingAutoConversion_.word);
+        if (!assessment.looksMistyped) {
+            pendingAutoConversion_ = {};
+            return;
+        }
+
+        direction = assessment.target == SuggestedLayout::Ru ? ConversionDirection::UsToRu : ConversionDirection::RuToUs;
+    } else {
+        direction = textConverter_.resolveDirection(pendingAutoConversion_.word);
+    }
+
+    const QString converted = textConverter_.convertText(pendingAutoConversion_.word, direction);
+    if (converted.isEmpty() || converted == pendingAutoConversion_.word) {
+        pendingAutoConversion_ = {};
+        return;
+    }
+
+    const QString targetLayoutId = targetLayoutIdForDirection(direction);
+    if (!config_.layouts.contains(targetLayoutId)) {
+        qWarning().noquote() << QStringLiteral("Skipping delayed replacement because layout '%1' is not configured").arg(targetLayoutId);
+        pendingAutoConversion_ = {};
+        return;
+    }
+
+    if (currentLayout() != targetLayoutId && !setLayout(targetLayoutId)) {
+        qWarning().noquote() << QStringLiteral("Skipping delayed replacement because layout switch failed: %1").arg(lastError_);
+        pendingAutoConversion_ = {};
+        return;
+    }
+
+    if (!textInputBackend_.replacePendingWord(pendingAutoConversion_.tokenId, converted)) {
+        const QString backendError = textInputBackend_.lastError();
+        if (!backendError.contains(QStringLiteral("Typing continued"), Qt::CaseInsensitive)
+            && !backendError.contains(QStringLiteral("Active window changed"), Qt::CaseInsensitive)) {
+            qWarning().noquote() << backendError;
+        }
+    }
+
+    pendingAutoConversion_ = {};
 }
 
 void ApplicationController::notifyInfo(const QString& message) const {

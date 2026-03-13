@@ -20,8 +20,9 @@ public:
 
 private:
     mutable QString lastError_;
+    mutable unsigned long cachedWindow_ = 0;
+    mutable FlamentineSwitcher::Core::WindowContext cachedContext_;
     _XDisplay* display_ = nullptr;
 };
 
 }  // namespace FlamentineSwitcher::Backends::Window
-

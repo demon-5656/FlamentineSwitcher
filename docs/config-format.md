@@ -59,4 +59,4 @@ Example:
 }
 ```
 
-`autoConvertDelayMs` is a policy field for the future delayed auto-correction pipeline. The current repository stores it in config and exposes it in settings, but live typed-text observation is not implemented yet.
+`autoConvertDelayMs` controls the X11-only delayed replacement timer. The backend only buffers committed words in explicitly allowed applications and cancels replacement if the user keeps typing before the timer expires.
