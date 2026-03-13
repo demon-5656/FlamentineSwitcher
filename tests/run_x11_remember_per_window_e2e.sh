@@ -47,6 +47,21 @@ TARGET_OUTPUT="${TEMP_DIR}/target_output.txt"
 TARGET_STDOUT="${TEMP_DIR}/target_stdout.txt"
 APP_LOG="${TEMP_DIR}/switcher.log"
 
+wait_for_switcher_service() {
+  local expected_pid="$1"
+  for _ in $(seq 1 60); do
+    local owner_pid=""
+    owner_pid="$(qdbus org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.GetConnectionUnixProcessID org.flamentineswitcher.Control 2>/dev/null | tr -d '\r\n' || true)"
+    if [ "$owner_pid" = "$expected_pid" ] && qdbus org.flamentineswitcher.Control /org/flamentineswitcher/Control org.flamentineswitcher.Control.GetCurrentLayout >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.25
+  done
+
+  echo "Failed to start FlamentineSwitcher D-Bus service for PID $expected_pid" >&2
+  return 1
+}
+
 cleanup() {
   if [ -n "$TARGET_PID" ]; then
     kill "$TARGET_PID" 2>/dev/null || true
@@ -74,16 +89,7 @@ trap cleanup EXIT
 start_switcher() {
   env DISPLAY="$DISPLAY_TO_USE" XDG_SESSION_TYPE=x11 QT_QPA_PLATFORM=xcb WAYLAND_DISPLAY= "$SWITCHER_BIN" >"$APP_LOG" 2>&1 &
   APP_PID=$!
-
-  for _ in $(seq 1 40); do
-    if qdbus org.flamentineswitcher.Control /org/flamentineswitcher/Control org.flamentineswitcher.Control.GetCurrentLayout >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 0.25
-  done
-
-  echo "Failed to start FlamentineSwitcher D-Bus service" >&2
-  exit 1
+  wait_for_switcher_service "$APP_PID"
 }
 
 cat > "$CONFIG_FILE" <<'JSON'

@@ -2,8 +2,6 @@
 
 #include <array>
 
-#include <QTimer>
-
 #include <X11/XKBlib.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/XInput2.h>
@@ -11,6 +9,7 @@
 #include <X11/keysym.h>
 
 #include "flamentine_switcher/backends/window/iwindow_backend.h"
+#include "flamentine_switcher/conversion/layout_maps.h"
 #include "flamentine_switcher/core/rules.h"
 
 namespace {
@@ -105,6 +104,21 @@ bool isBoundaryCharacter(const QChar character) {
     return character.isSpace() || delimiters.contains(character);
 }
 
+QString usPhysicalKeyForCharacter(const QChar character) {
+    static const QString usLower = QStringLiteral("`1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./");
+    static const QString usUpper = QStringLiteral("~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:\"ZXCVBNM<>?");
+
+    const auto& maps = FlamentineSwitcher::Conversion::usRuMap();
+    const QChar usEquivalent = maps.ruToUs.value(character, character);
+
+    const int upperIndex = usUpper.indexOf(usEquivalent);
+    if (upperIndex >= 0) {
+        return QString(usLower.at(upperIndex)) + usEquivalent;
+    }
+
+    return QString(usEquivalent);
+}
+
 QString normalizedWindowId(const QString& value) {
     return value.trimmed().toLower();
 }
@@ -129,8 +143,10 @@ X11TextInputBackend::X11TextInputBackend(FlamentineSwitcher::Backends::Window::I
     }
 
     rootWindow_ = DefaultRootWindow(display_);
-    notifier_ = new QSocketNotifier(ConnectionNumber(display_), QSocketNotifier::Read, this);
-    connect(notifier_, &QSocketNotifier::activated, this, &X11TextInputBackend::processXEvents);
+    // Secondary Xlib connections were unreliable with QSocketNotifier on nested X11 servers,
+    // so the observer uses a lightweight timer pump while auto-conversion is enabled.
+    eventPumpTimer_.setInterval(16);
+    connect(&eventPumpTimer_, &QTimer::timeout, this, &X11TextInputBackend::processXEvents);
 }
 
 X11TextInputBackend::~X11TextInputBackend() {
@@ -156,8 +172,10 @@ void X11TextInputBackend::applyConfig(const FlamentineSwitcher::Core::AppConfig&
 
 void X11TextInputBackend::setEnabled(const bool enabled) {
     enabled_ = enabled;
-    if (notifier_ != nullptr) {
-        notifier_->setEnabled(enabled_ && !suppressObservation_);
+    if (enabled_ && !suppressObservation_ && display_ != nullptr) {
+        eventPumpTimer_.start();
+    } else {
+        eventPumpTimer_.stop();
     }
     if (!enabled_) {
         resetObservationState();
@@ -187,9 +205,11 @@ bool X11TextInputBackend::replacePendingWord(const quint64 tokenId, const QStrin
         return false;
     }
 
+    const QString finalText = replacement + pendingWord_.suffix;
+
     QVector<ResolvedKeystroke> strokes;
-    strokes.reserve(replacement.size());
-    for (const QChar character : replacement) {
+    strokes.reserve(finalText.size());
+    for (const QChar character : finalText) {
         ResolvedKeystroke stroke;
         if (!resolveKeystroke(character, stroke)) {
             lastError_ = QStringLiteral("Unable to resolve a keystroke for '%1' in the active layout").arg(character);
@@ -199,9 +219,7 @@ bool X11TextInputBackend::replacePendingWord(const quint64 tokenId, const QStrin
     }
 
     suppressObservation_ = true;
-    if (notifier_ != nullptr) {
-        notifier_->setEnabled(false);
-    }
+    eventPumpTimer_.stop();
 
     const KeyCode backspaceKeycode = XKeysymToKeycode(display_, XK_BackSpace);
     for (int index = 0; index < pendingWord_.backspaceCount; ++index) {
@@ -250,8 +268,8 @@ void X11TextInputBackend::processXEvents() {
 
 void X11TextInputBackend::resumeObservation() {
     suppressObservation_ = false;
-    if (notifier_ != nullptr) {
-        notifier_->setEnabled(enabled_);
+    if (enabled_ && display_ != nullptr) {
+        eventPumpTimer_.start();
     }
 }
 
@@ -273,7 +291,7 @@ bool X11TextInputBackend::initializeXi2() {
     std::array<unsigned char, XIMaskLen(XI_LASTEVENT)> mask {};
     XIEventMask eventMask {};
     XISetMask(mask.data(), XI_KeyPress);
-    eventMask.deviceid = XIAllMasterDevices;
+    eventMask.deviceid = XIAllDevices;
     eventMask.mask_len = static_cast<int>(mask.size());
     eventMask.mask = mask.data();
 
@@ -353,7 +371,7 @@ void X11TextInputBackend::handleKeyPress(void* eventData) {
         }
 
         if (isBoundaryCharacter(character)) {
-            commitCurrentToken(context);
+            commitCurrentToken(context, QString(character));
             currentToken_.clear();
             continue;
         }
@@ -363,15 +381,16 @@ void X11TextInputBackend::handleKeyPress(void* eventData) {
     }
 }
 
-void X11TextInputBackend::commitCurrentToken(const FlamentineSwitcher::Core::WindowContext& context) {
+void X11TextInputBackend::commitCurrentToken(const FlamentineSwitcher::Core::WindowContext& context, const QString& suffix) {
     if (currentToken_.isEmpty()) {
         return;
     }
 
     pendingWord_.tokenId = nextTokenId_++;
     pendingWord_.word = currentToken_;
+    pendingWord_.suffix = suffix;
     pendingWord_.windowId = context.windowId;
-    pendingWord_.backspaceCount = currentToken_.size();
+    pendingWord_.backspaceCount = currentToken_.size() + suffix.size();
     pendingWord_.generationAtCommit = generation_;
     pendingWord_.valid = true;
     emit wordCommitted(pendingWord_.tokenId, pendingWord_.word, context);
@@ -391,31 +410,21 @@ bool X11TextInputBackend::resolveKeystroke(const QChar character, ResolvedKeystr
         return false;
     }
 
-    unsigned int lockedModifiers = 0;
-    XkbStateRec state {};
-    if (XkbGetState(display_, XkbUseCoreKbd, &state) == Success) {
-        lockedModifiers = static_cast<unsigned int>(state.locked_mods & LockMask);
+    const QString usKey = usPhysicalKeyForCharacter(character);
+    if (usKey.isEmpty()) {
+        return false;
     }
 
-    const std::array<unsigned int, 4> modifierCandidates = {
-        lockedModifiers,
-        static_cast<unsigned int>(lockedModifiers | ShiftMask),
-        0U,
-        ShiftMask,
-    };
-
-    for (int keycode = 8; keycode < 256; ++keycode) {
-        for (const unsigned int modifiers : modifierCandidates) {
-            const QString translated = translatedText(display_, keycode, modifiers);
-            if (translated == QString(character)) {
-                stroke.keycode = keycode;
-                stroke.shift = (modifiers & ShiftMask) != 0;
-                return true;
-            }
-        }
+    const QChar baseCharacter = usKey.at(0);
+    const KeySym baseKeysym = static_cast<KeySym>(baseCharacter.unicode());
+    const KeyCode keycode = XKeysymToKeycode(display_, baseKeysym);
+    if (keycode == 0) {
+        return false;
     }
 
-    return false;
+    stroke.keycode = keycode;
+    stroke.shift = usKey.size() > 1;
+    return true;
 }
 
 void X11TextInputBackend::sendKey(const int keycode, const bool withShift) const {

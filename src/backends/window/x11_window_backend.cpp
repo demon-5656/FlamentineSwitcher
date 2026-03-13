@@ -65,6 +65,10 @@ QString processNameFromPid(const long pid) {
     return exeInfo.symLinkTarget().isEmpty() ? QString() : QFileInfo(exeInfo.symLinkTarget()).baseName();
 }
 
+bool hasStableIdentity(const FlamentineSwitcher::Core::WindowContext& context) {
+    return !context.appName.trimmed().isEmpty() || !context.windowClass.trimmed().isEmpty();
+}
+
 }  // namespace
 
 namespace FlamentineSwitcher::Backends::Window {
@@ -115,7 +119,7 @@ FlamentineSwitcher::Core::WindowContext X11WindowBackend::currentContext() const
         return context;
     }
 
-    if (activeWindow == cachedWindow_) {
+    if (activeWindow == cachedWindow_ && hasStableIdentity(cachedContext_)) {
         lastError_.clear();
         return cachedContext_;
     }
@@ -165,9 +169,15 @@ FlamentineSwitcher::Core::WindowContext X11WindowBackend::currentContext() const
         context.appName = context.windowClass;
     }
 
-    lastError_.clear();
-    cachedWindow_ = activeWindow;
-    cachedContext_ = context;
+    if (hasStableIdentity(context)) {
+        cachedWindow_ = activeWindow;
+        cachedContext_ = context;
+        lastError_.clear();
+    } else {
+        cachedWindow_ = 0;
+        cachedContext_ = {};
+        lastError_ = QStringLiteral("Unable to identify the active X11 window");
+    }
     return context;
 }
 
