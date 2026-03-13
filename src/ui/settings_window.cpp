@@ -84,6 +84,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     currentTargetWindowClassValueLabel_ = new QLabel(QStringLiteral("—"));
     currentTargetWindowIdValueLabel_ = new QLabel(QStringLiteral("—"));
     currentTargetFullscreenValueLabel_ = new QLabel(QStringLiteral("—"));
+    copyCurrentTargetInfoButton_ = new QPushButton(QStringLiteral("Copy Target Info"));
     addCurrentAppButton_ = new QPushButton(QStringLiteral("Allow Current App Only"));
     addCurrentWindowClassButton_ = new QPushButton(QStringLiteral("Allow Current WM_CLASS Only"));
     addCurrentTargetButton_ = new QPushButton(QStringLiteral("Allow App + WM_CLASS"));
@@ -96,6 +97,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     detectedForm->addRow(QStringLiteral("Fullscreen"), currentTargetFullscreenValueLabel_);
 
     auto* quickAddLayout = new QHBoxLayout();
+    quickAddLayout->addWidget(copyCurrentTargetInfoButton_);
     quickAddLayout->addWidget(addCurrentAppButton_);
     quickAddLayout->addWidget(addCurrentWindowClassButton_);
     quickAddLayout->addWidget(addCurrentTargetButton_);
@@ -208,6 +210,7 @@ SettingsWindow::SettingsWindow(QWidget* parent)
 
     connect(layoutsEdit_, &QLineEdit::textChanged, this, &SettingsWindow::syncDefaultLayoutChoices);
     connect(targetPolicyCombo_, &QComboBox::currentIndexChanged, this, &SettingsWindow::syncTargetPolicyUi);
+    connect(copyCurrentTargetInfoButton_, &QPushButton::clicked, this, &SettingsWindow::copyCurrentTargetInfoRequested);
     connect(addCurrentAppButton_, &QPushButton::clicked, this, &SettingsWindow::allowCurrentAppRequested);
     connect(addCurrentWindowClassButton_, &QPushButton::clicked, this, &SettingsWindow::allowCurrentWindowClassRequested);
     connect(addCurrentTargetButton_, &QPushButton::clicked, this, &SettingsWindow::allowCurrentTargetRequested);
@@ -265,6 +268,7 @@ void SettingsWindow::setCurrentTargetContext(const FlamentineSwitcher::Core::Win
 
     const bool hasApp = !context.appName.trimmed().isEmpty();
     const bool hasWindowClass = !context.windowClass.trimmed().isEmpty();
+    copyCurrentTargetInfoButton_->setEnabled(hasIdentifiedTarget);
     addCurrentAppButton_->setEnabled(hasApp);
     addCurrentWindowClassButton_->setEnabled(hasWindowClass);
     addCurrentTargetButton_->setEnabled(hasApp || hasWindowClass);

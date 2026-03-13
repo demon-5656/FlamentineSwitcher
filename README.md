@@ -39,6 +39,7 @@ The current text conversion workflow is intentionally conservative:
 - tray and settings can add the currently focused target to the allowlist in one action
 - tray target inspector now exposes separate quick actions for `app only`, `WM_CLASS only`, or both
 - tray menu exposes `Copy Target Info` and a `Target History` debug popup
+- settings expose `Copy Target Info` alongside the quick allowlist actions
 - settings now show the currently detected target details: app, `WM_CLASS`, window id and fullscreen state
 - Wayland stays in the safe/manual mode without low-level text interception
 

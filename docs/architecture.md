@@ -32,7 +32,7 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 ### UI and Services
 
 - `TrayIcon` exposes fast actions, current status, a live target inspector, `Copy Target Info`, a target-history popup and separate quick allowlisting actions for app-only, `WM_CLASS`-only or both.
-- `SettingsWindow` edits the full application config, shows the currently detected target metadata and can add that target to the allowlist.
+- `SettingsWindow` edits the full application config, shows the currently detected target metadata, can copy it to the clipboard and can add that target to the allowlist.
 - `Notifications` centralizes user-facing status messages.
 - `DbusService` provides remote control entry points.
 - `AutostartService` manages a desktop autostart entry in the user session.

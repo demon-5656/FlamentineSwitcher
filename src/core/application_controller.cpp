@@ -90,6 +90,8 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
     connect(&trayIcon_, &Ui::TrayIcon::quitRequested, qApp, &QCoreApplication::quit);
     connect(&settingsWindow_, &Ui::SettingsWindow::configApplied, this, &ApplicationController::applyConfig);
     connect(&settingsWindow_, &Ui::SettingsWindow::allowCurrentAppRequested, this, &ApplicationController::allowCurrentApp);
+    connect(
+        &settingsWindow_, &Ui::SettingsWindow::copyCurrentTargetInfoRequested, this, &ApplicationController::copyCurrentTargetInfo);
     connect(&settingsWindow_,
             &Ui::SettingsWindow::allowCurrentWindowClassRequested,
             this,
