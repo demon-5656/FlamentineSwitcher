@@ -77,6 +77,7 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
     connect(&trayIcon_, &Ui::TrayIcon::convertLastWordRequested, this, &ApplicationController::convertLastWord);
     connect(&trayIcon_, &Ui::TrayIcon::convertSelectionRequested, this, &ApplicationController::convertSelection);
     connect(&trayIcon_, &Ui::TrayIcon::openSettingsRequested, this, &ApplicationController::openSettings);
+    connect(&trayIcon_, &Ui::TrayIcon::copyCurrentTargetInfoRequested, this, &ApplicationController::copyCurrentTargetInfo);
     connect(&trayIcon_, &Ui::TrayIcon::allowCurrentAppRequested, this, &ApplicationController::allowCurrentApp);
     connect(&trayIcon_,
             &Ui::TrayIcon::allowCurrentWindowClassRequested,
@@ -248,6 +249,22 @@ bool ApplicationController::openSettings() {
     return true;
 }
 
+bool ApplicationController::copyCurrentTargetInfo() {
+    const WindowContext context = windowBackend_.currentContext();
+    if (context.appName.trimmed().isEmpty() && context.windowClass.trimmed().isEmpty() && context.windowId.trimmed().isEmpty()) {
+        notifyWarning(windowBackend_.lastError().isEmpty() ? QStringLiteral("Unable to identify the active target")
+                                                           : windowBackend_.lastError());
+        return false;
+    }
+
+    const QString info = formatTargetInfo(context);
+    QClipboard* clipboard = QGuiApplication::clipboard();
+    clipboard->setText(info, QClipboard::Clipboard);
+    clipboard->setText(info, QClipboard::Selection);
+    notifyInfo(QStringLiteral("Copied current target info to the clipboard"));
+    return true;
+}
+
 bool ApplicationController::allowCurrentApp() {
     return allowCurrentTargetEntries(true, false);
 }
@@ -407,6 +424,14 @@ void ApplicationController::rememberCurrentTargetLayout(const QString& layoutId)
         scheduleLayoutMemoryPersist();
     }
     updateCurrentTargetUi(context);
+}
+
+QString ApplicationController::formatTargetInfo(const WindowContext& context) const {
+    return QStringLiteral("app=%1\nwm_class=%2\nwindow_id=%3\nfullscreen=%4")
+        .arg(context.appName.trimmed().isEmpty() ? QStringLiteral("—") : context.appName.trimmed(),
+             context.windowClass.trimmed().isEmpty() ? QStringLiteral("—") : context.windowClass.trimmed(),
+             context.windowId.trimmed().isEmpty() ? QStringLiteral("—") : context.windowId.trimmed(),
+             context.fullscreen ? QStringLiteral("yes") : QStringLiteral("no"));
 }
 
 void ApplicationController::updateCurrentTargetUi(const WindowContext& context) {

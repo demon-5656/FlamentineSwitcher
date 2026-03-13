@@ -67,6 +67,7 @@ public slots:
     bool enable();
     bool disable();
     bool openSettings();
+    bool copyCurrentTargetInfo();
     bool allowCurrentApp();
     bool allowCurrentWindowClass();
     bool allowCurrentTarget();
@@ -98,6 +99,7 @@ private:
     void registerHotkeys();
     void rememberCurrentTargetLayout(const QString& layoutId);
     bool allowCurrentTargetEntries(bool allowApp, bool allowWindowClass);
+    QString formatTargetInfo(const WindowContext& context) const;
     void updateCurrentTargetUi(const WindowContext& context);
     void syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId);
     void updateTextInputBackendState();
