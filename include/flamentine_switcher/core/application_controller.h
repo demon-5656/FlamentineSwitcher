@@ -84,6 +84,10 @@ private slots:
     void handleHotkeyAction(FlamentineSwitcher::Core::HotkeyAction action);
     void handleObservedWordCommitted(quint64 tokenId, const QString& word, const FlamentineSwitcher::Core::WindowContext& context);
     void processPendingAutoConversion();
+    void beginSelectionCopy();
+    void sendSelectionCopy();
+    void waitForSelectionClipboard();
+    void finishSelectionConversion();
 
 private:
     struct PendingAutoConversion {
@@ -96,6 +100,8 @@ private:
     bool setEnabled(bool enabled);
     QString clipboardText() const;
     void replaceClipboardText(const QString& text) const;
+    void setKlipperClipboardText(const QString& text) const;
+    QString convertSelectionClipboardText(const QString& sourceText);
     void registerHotkeys();
     void rememberCurrentTargetLayout(const QString& layoutId);
     bool allowCurrentTargetEntries(bool allowApp, bool allowWindowClass);
@@ -125,9 +131,14 @@ private:
     QTimer refreshTimer_;
     QTimer autoConvertTimer_;
     QTimer layoutMemoryPersistTimer_;
+    QTimer selectionClipboardWaitTimer_;
     PendingAutoConversion pendingAutoConversion_;
     WindowContext lastWindowContext_;
     bool syncingRememberedLayout_ = false;
+    bool selectionConversionPending_ = false;
+    QString clipboardBeforeSelectionCopy_;
+    QString copiedSelectionText_;
+    int selectionClipboardWaitAttempts_ = 0;
 };
 
 }  // namespace FlamentineSwitcher::Core

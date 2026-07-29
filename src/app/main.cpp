@@ -1,4 +1,7 @@
 #include <QApplication>
+#include <QDBusInterface>
+#include <QDBusReply>
+#include <QDebug>
 
 #include "flamentine_switcher/backends/hotkeys/noop_hotkey_backend.h"
 #include "flamentine_switcher/backends/hotkeys/x11_hotkey_backend.h"
@@ -24,6 +27,26 @@ int main(int argc, char* argv[]) {
     QApplication::setApplicationDisplayName(QStringLiteral("FlamentineSwitcher"));
     QApplication::setOrganizationDomain(QStringLiteral("github.com/demon-5656"));
     QApplication::setQuitOnLastWindowClosed(false);
+
+    // This tiny client mode is intended for KDE's Custom Shortcuts.  It does not
+    // start a second resident process; it asks the existing daemon to process the
+    // current selection and exits immediately.
+    if (app.arguments().contains(QStringLiteral("--transliterate-selection"))) {
+        QDBusInterface control(QStringLiteral("org.flamentineswitcher.Control"),
+                               QStringLiteral("/org/flamentineswitcher/Control"),
+                               QStringLiteral("org.flamentineswitcher.Control"));
+        if (!control.isValid()) {
+            qWarning() << "FlamentineSwitcher is not running";
+            return 1;
+        }
+
+        const QDBusReply<QString> result = control.call(QStringLiteral("ConvertSelection"));
+        if (!result.isValid()) {
+            qWarning().noquote() << result.error().message();
+            return 1;
+        }
+        return 0;
+    }
 
     qRegisterMetaType<FlamentineSwitcher::Core::AppConfig>();
     qRegisterMetaType<FlamentineSwitcher::Core::HotkeyAction>();

@@ -182,6 +182,52 @@ void X11TextInputBackend::setEnabled(const bool enabled) {
     }
 }
 
+bool X11TextInputBackend::copyActiveSelection() {
+    if (display_ == nullptr) {
+        lastError_ = QStringLiteral("X11 text input backend is unavailable");
+        return false;
+    }
+
+    const KeyCode controlKeycode = XKeysymToKeycode(display_, XK_Control_L);
+    const KeyCode cKeycode = XKeysymToKeycode(display_, XK_c);
+    if (controlKeycode == 0 || cKeycode == 0) {
+        lastError_ = QStringLiteral("Unable to resolve Ctrl+C on the X11 server");
+        return false;
+    }
+    XTestFakeKeyEvent(display_, controlKeycode, True, CurrentTime);
+    XTestFakeKeyEvent(display_, cKeycode, True, CurrentTime);
+    XTestFakeKeyEvent(display_, cKeycode, False, CurrentTime);
+    XTestFakeKeyEvent(display_, controlKeycode, False, CurrentTime);
+    XFlush(display_);
+    lastError_.clear();
+    return true;
+}
+
+bool X11TextInputBackend::replaceActiveSelection() {
+    if (display_ == nullptr) {
+        lastError_ = QStringLiteral("X11 text input backend is unavailable");
+        return false;
+    }
+
+    // The application still owns focus after a global grab is released.  Ctrl+V is
+    // deliberately used instead of typing characters: it is layout-independent and
+    // lets the target toolkit replace its current selection atomically.
+    const KeyCode controlKeycode = XKeysymToKeycode(display_, XK_Control_L);
+    const KeyCode vKeycode = XKeysymToKeycode(display_, XK_v);
+    if (controlKeycode == 0 || vKeycode == 0) {
+        lastError_ = QStringLiteral("Unable to resolve Ctrl+V on the X11 server");
+        return false;
+    }
+
+    XTestFakeKeyEvent(display_, controlKeycode, True, CurrentTime);
+    XTestFakeKeyEvent(display_, vKeycode, True, CurrentTime);
+    XTestFakeKeyEvent(display_, vKeycode, False, CurrentTime);
+    XTestFakeKeyEvent(display_, controlKeycode, False, CurrentTime);
+    XFlush(display_);
+    lastError_.clear();
+    return true;
+}
+
 bool X11TextInputBackend::replacePendingWord(const quint64 tokenId, const QString& replacement) {
     if (display_ == nullptr) {
         lastError_ = QStringLiteral("X11 text input backend is unavailable");

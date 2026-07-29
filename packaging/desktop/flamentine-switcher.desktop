@@ -7,4 +7,8 @@ Icon=input-keyboard
 Categories=Utility;Qt;
 StartupNotify=false
 X-KDE-autostart-phase=2
+Actions=TransliterateSelection;
 
+[Desktop Action TransliterateSelection]
+Name=Transliterate selected text
+Exec=flamentine-switcher --transliterate-selection

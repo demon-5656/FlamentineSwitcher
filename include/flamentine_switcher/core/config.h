@@ -17,7 +17,7 @@ enum class LogLevel {
 struct HotkeyConfig {
     QString toggleLayout = QStringLiteral("Meta+Space");
     QString convertLastWord = QStringLiteral("Pause");
-    QString convertSelection = QStringLiteral("Meta+Pause");
+    QString convertSelection = QStringLiteral("Meta+End");
     QString openSettings = QStringLiteral("Meta+Alt+K");
     QString toggleEnabled = QStringLiteral("Meta+Alt+S");
 
@@ -28,6 +28,7 @@ struct HotkeyConfig {
 struct ConversionConfig {
     bool preserveCase = true;
     bool preservePunctuation = true;
+    bool switchLayoutAfterConversion = true;
     bool autoConvertEnabled = false;
     bool heuristicsEnabled = true;
     int autoConvertDelayMs = 450;
@@ -53,13 +54,15 @@ struct AppConfig {
     bool rememberLayoutPerApp = false;
     bool notificationsEnabled = true;
     bool autoStart = false;
-    bool requireAllowedTargets = true;
+    // A manual action is safe by intent: no background interception or allowlist is
+    // needed for the default, one-click workflow.
+    bool requireAllowedTargets = false;
     QStringList allowedApps;
     QStringList allowedWindowClasses;
     QStringList excludedApps;
     QStringList excludedWindowClasses;
-    bool excludeTerminals = true;
-    bool excludeFullscreen = true;
+    bool excludeTerminals = false;
+    bool excludeFullscreen = false;
     HotkeyConfig hotkeys;
     ConversionConfig conversion;
     LoggingConfig logging;

@@ -24,7 +24,7 @@ org.flamentineswitcher.Control
 - `SetLayout(layoutId: s) -> b`
 - `ToggleLayout() -> b`
 - `ConvertLastWord() -> s`
-- `ConvertSelection() -> s`
+- `ConvertSelection() -> s` — transliterates and replaces the active selection.  On Wayland this requires a `ydotoold` daemon for `Ctrl+C`/`Ctrl+V` injection.
 - `Enable() -> b`
 - `Disable() -> b`
 - `OpenSettings() -> b`
@@ -33,4 +33,3 @@ org.flamentineswitcher.Control
 
 - `LayoutChanged(layoutId: s)`
 - `EnabledChanged(enabled: b)`
-
