@@ -73,6 +73,7 @@ private:
     QPlainTextEdit* excludedWindowClassesEdit_ = nullptr;
     QCheckBox* preserveCaseCheckBox_ = nullptr;
     QCheckBox* preservePunctuationCheckBox_ = nullptr;
+    QCheckBox* switchLayoutAfterConversionCheckBox_ = nullptr;
     QCheckBox* autoConvertCheckBox_ = nullptr;
     QCheckBox* heuristicsCheckBox_ = nullptr;
     QComboBox* autoConvertDelayCombo_ = nullptr;

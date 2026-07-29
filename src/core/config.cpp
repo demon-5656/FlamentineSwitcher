@@ -41,6 +41,8 @@ ConversionConfig ConversionConfig::fromJsonObject(const QJsonObject& object) {
     ConversionConfig config;
     config.preserveCase = object.value(QStringLiteral("preserveCase")).toBool(config.preserveCase);
     config.preservePunctuation = object.value(QStringLiteral("preservePunctuation")).toBool(config.preservePunctuation);
+    config.switchLayoutAfterConversion =
+        object.value(QStringLiteral("switchLayoutAfterConversion")).toBool(config.switchLayoutAfterConversion);
     config.autoConvertEnabled = object.value(QStringLiteral("autoConvertEnabled")).toBool(config.autoConvertEnabled);
     config.heuristicsEnabled = object.value(QStringLiteral("heuristicsEnabled")).toBool(config.heuristicsEnabled);
     config.autoConvertDelayMs = qMax(0, object.value(QStringLiteral("autoConvertDelayMs")).toInt(config.autoConvertDelayMs));
@@ -51,6 +53,7 @@ QJsonObject ConversionConfig::toJsonObject() const {
     return {
         {QStringLiteral("preserveCase"), preserveCase},
         {QStringLiteral("preservePunctuation"), preservePunctuation},
+        {QStringLiteral("switchLayoutAfterConversion"), switchLayoutAfterConversion},
         {QStringLiteral("autoConvertEnabled"), autoConvertEnabled},
         {QStringLiteral("heuristicsEnabled"), heuristicsEnabled},
         {QStringLiteral("autoConvertDelayMs"), autoConvertDelayMs},

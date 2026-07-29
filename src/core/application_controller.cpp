@@ -1,8 +1,11 @@
 #include "flamentine_switcher/core/application_controller.h"
 
 #include <QClipboard>
+#include <QDBusInterface>
+#include <QDBusReply>
 #include <QGuiApplication>
 #include <QMap>
+#include <QUuid>
 #include <utility>
 
 #include "flamentine_switcher/backends/hotkeys/ihotkey_backend.h"
@@ -69,10 +72,12 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
     autoConvertTimer_.setSingleShot(true);
     layoutMemoryPersistTimer_.setSingleShot(true);
     layoutMemoryPersistTimer_.setInterval(700);
+    selectionClipboardWaitTimer_.setInterval(40);
 
     connect(&refreshTimer_, &QTimer::timeout, this, &ApplicationController::refreshLayout);
     connect(&autoConvertTimer_, &QTimer::timeout, this, &ApplicationController::processPendingAutoConversion);
     connect(&layoutMemoryPersistTimer_, &QTimer::timeout, this, &ApplicationController::persistLayoutMemory);
+    connect(&selectionClipboardWaitTimer_, &QTimer::timeout, this, &ApplicationController::waitForSelectionClipboard);
     connect(&trayIcon_, &Ui::TrayIcon::toggleLayoutRequested, this, &ApplicationController::toggleLayout);
     connect(&trayIcon_, &Ui::TrayIcon::convertLastWordRequested, this, &ApplicationController::convertLastWord);
     connect(&trayIcon_, &Ui::TrayIcon::convertSelectionRequested, this, &ApplicationController::convertSelection);
@@ -132,14 +137,14 @@ void ApplicationController::initialize() {
     if (!layoutBackend_.isSupported()) {
         notifyWarning(QStringLiteral("Layout backend is limited: %1").arg(layoutBackend_.lastError()));
     }
-    if (!hotkeyBackend_.isSupported()) {
+    // Wayland uses the installed KDE Global Shortcuts launcher instead of the
+    // X11 grab backend, so reporting the latter as unavailable is misleading.
+    if (!hotkeyBackend_.isSupported()
+        && !QGuiApplication::platformName().contains(QStringLiteral("wayland"), Qt::CaseInsensitive)) {
         notifyWarning(QStringLiteral("Hotkey backend is limited: %1").arg(hotkeyBackend_.lastError()));
     }
     if (!windowBackend_.isSupported() && config_.requireAllowedTargets) {
         notifyWarning(QStringLiteral("Window backend is unavailable, deny-by-default policy will block conversion actions"));
-    }
-    if (config_.conversion.autoConvertEnabled && !textInputBackend_.isSupported()) {
-        notifyWarning(QStringLiteral("Delayed automatic conversion is unavailable: %1").arg(textInputBackend_.lastError()));
     }
 }
 
@@ -223,15 +228,98 @@ QString ApplicationController::convertSelection() {
         return {};
     }
 
-    const QString sourceText = clipboardText();
+    if (selectionConversionPending_) {
+        notifyInfo(QStringLiteral("Selection conversion is already in progress"));
+        return {};
+    }
+    selectionConversionPending_ = true;
+    // A global shortcut is delivered while Super may still be physically held.
+    // Waiting briefly prevents the injected Ctrl+C from becoming Super+Ctrl+C.
+    QTimer::singleShot(220, this, &ApplicationController::beginSelectionCopy);
+    return QStringLiteral("pending");
+}
+
+void ApplicationController::beginSelectionCopy() {
+    if (!selectionConversionPending_) {
+        return;
+    }
+
+    // Isolate this request from every older Klipper history update. The source
+    // text is accepted only after it replaces this unique marker.
+    clipboardBeforeSelectionCopy_ = QStringLiteral("__flamentine_selection_%1__")
+                                      .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    setKlipperClipboardText(clipboardBeforeSelectionCopy_);
+    copiedSelectionText_.clear();
+    selectionClipboardWaitAttempts_ = 0;
+    QTimer::singleShot(60, this, &ApplicationController::sendSelectionCopy);
+}
+
+void ApplicationController::sendSelectionCopy() {
+    if (!selectionConversionPending_) {
+        return;
+    }
+    if (!textInputBackend_.copyActiveSelection()) {
+        selectionConversionPending_ = false;
+        notifyWarning(textInputBackend_.lastError());
+        return;
+    }
+
+    selectionClipboardWaitTimer_.start();
+}
+
+void ApplicationController::waitForSelectionClipboard() {
+    if (!selectionConversionPending_) {
+        selectionClipboardWaitTimer_.stop();
+        return;
+    }
+
+    const QString currentClipboardText = clipboardText();
+    ++selectionClipboardWaitAttempts_;
+    // Klipper updates asynchronously on Wayland.  Prefer a confirmed change, but
+    // still handle copying the same text that was already in the clipboard.
+    if (currentClipboardText != clipboardBeforeSelectionCopy_ && !currentClipboardText.trimmed().isEmpty()) {
+        copiedSelectionText_ = currentClipboardText;
+        selectionClipboardWaitTimer_.stop();
+        finishSelectionConversion();
+    } else if (selectionClipboardWaitAttempts_ >= 25) {
+        selectionClipboardWaitTimer_.stop();
+        selectionConversionPending_ = false;
+        notifyWarning(QStringLiteral("Ctrl+C did not put selected text into the clipboard"));
+    }
+}
+
+void ApplicationController::finishSelectionConversion() {
+    selectionConversionPending_ = false;
+    const QString sourceText = copiedSelectionText_;
+    const QString converted = convertSelectionClipboardText(sourceText);
+    copiedSelectionText_.clear();
+    clipboardBeforeSelectionCopy_.clear();
+    if (converted.isEmpty()) {
+        return;
+    }
+
+    if (textInputBackend_.replaceActiveSelection()) {
+        if (config_.conversion.switchLayoutAfterConversion) {
+            const auto direction = textConverter_.resolveDirection(sourceText);
+            const QString targetLayoutId = targetLayoutIdForDirection(direction);
+            if (config_.layouts.contains(targetLayoutId) && currentLayout() != targetLayoutId) {
+                setLayout(targetLayoutId);
+            }
+        }
+        notifyInfo(QStringLiteral("Selection transliterated"));
+    } else {
+        notifyWarning(textInputBackend_.lastError());
+    }
+}
+
+QString ApplicationController::convertSelectionClipboardText(const QString& sourceText) {
     if (sourceText.trimmed().isEmpty()) {
-        notifyWarning(QStringLiteral("Clipboard is empty, nothing to convert"));
+        notifyWarning(QStringLiteral("Ctrl+C did not put selected text into the clipboard"));
         return {};
     }
 
     const QString converted = textConverter_.convertText(sourceText);
     replaceClipboardText(converted);
-    notifyInfo(QStringLiteral("Converted text copied back to the clipboard"));
     return converted;
 }
 
@@ -393,6 +481,18 @@ bool ApplicationController::setEnabled(const bool enabled) {
 }
 
 QString ApplicationController::clipboardText() const {
+    // On Plasma Wayland, a background Qt client cannot always read another
+    // application's selection. Klipper owns the compositor clipboard and can.
+    QDBusInterface klipper(QStringLiteral("org.kde.klipper"),
+                           QStringLiteral("/klipper"),
+                           QStringLiteral("org.kde.klipper.klipper"));
+    if (klipper.isValid()) {
+        const QDBusReply<QString> result = klipper.call(QStringLiteral("getClipboardContents"));
+        if (result.isValid() && !result.value().trimmed().isEmpty()) {
+            return result.value();
+        }
+    }
+
     QClipboard* clipboard = QGuiApplication::clipboard();
     QString text = clipboard->text(QClipboard::Selection);
     if (text.trimmed().isEmpty()) {
@@ -405,6 +505,17 @@ void ApplicationController::replaceClipboardText(const QString& text) const {
     QClipboard* clipboard = QGuiApplication::clipboard();
     clipboard->setText(text, QClipboard::Clipboard);
     clipboard->setText(text, QClipboard::Selection);
+
+    setKlipperClipboardText(text);
+}
+
+void ApplicationController::setKlipperClipboardText(const QString& text) const {
+    QDBusInterface klipper(QStringLiteral("org.kde.klipper"),
+                           QStringLiteral("/klipper"),
+                           QStringLiteral("org.kde.klipper.klipper"));
+    if (klipper.isValid()) {
+        klipper.call(QStringLiteral("setClipboardContents"), text);
+    }
 }
 
 void ApplicationController::registerHotkeys() {
@@ -474,16 +585,15 @@ void ApplicationController::syncRememberedLayout(const WindowContext& context, c
 
 void ApplicationController::updateTextInputBackendState() {
     textInputBackend_.applyConfig(config_);
-    const bool shouldObserve = config_.enabled && config_.conversion.autoConvertEnabled;
-    if (!shouldObserve) {
-        pendingAutoConversion_ = {};
-        autoConvertTimer_.stop();
-    }
+    // This application is intentionally click-to-convert only.  Do not start the
+    // XInput observer even if an old configuration contains the retired option.
+    pendingAutoConversion_ = {};
+    autoConvertTimer_.stop();
     if (!config_.rememberLayoutPerWindow && !config_.rememberLayoutPerApp) {
         layoutMemory_.clear();
         persistLayoutMemory();
     }
-    textInputBackend_.setEnabled(shouldObserve);
+    textInputBackend_.setEnabled(false);
 }
 
 void ApplicationController::scheduleLayoutMemoryPersist() {

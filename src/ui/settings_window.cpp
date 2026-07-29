@@ -36,29 +36,29 @@ namespace FlamentineSwitcher::Ui {
 
 SettingsWindow::SettingsWindow(QWidget* parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("FlamentineSwitcher Settings"));
+    setWindowTitle(QStringLiteral("FlamentineSwitcher — Настройки"));
     resize(760, 620);
 
     QTabWidget* tabs = new QTabWidget(this);
 
-    enabledCheckBox_ = new QCheckBox(QStringLiteral("Enable application"));
-    notificationsCheckBox_ = new QCheckBox(QStringLiteral("Enable notifications"));
-    autostartCheckBox_ = new QCheckBox(QStringLiteral("Start automatically in the Plasma session"));
+    enabledCheckBox_ = new QCheckBox(QStringLiteral("Включить транслитерацию"));
+    notificationsCheckBox_ = new QCheckBox(QStringLiteral("Показывать уведомления"));
+    autostartCheckBox_ = new QCheckBox(QStringLiteral("Запускать вместе с Plasma"));
     auto* generalLayout = new QVBoxLayout();
     generalLayout->addWidget(enabledCheckBox_);
     generalLayout->addWidget(notificationsCheckBox_);
     generalLayout->addWidget(autostartCheckBox_);
     generalLayout->addStretch();
-    tabs->addTab(makePage(tabs, generalLayout), QStringLiteral("General"));
+    tabs->addTab(makePage(tabs, generalLayout), QStringLiteral("Основное"));
 
     layoutsEdit_ = new QLineEdit();
     layoutsEdit_->setPlaceholderText(QStringLiteral("us, ru"));
     defaultLayoutCombo_ = new QComboBox();
     defaultLayoutCombo_->setEditable(true);
     auto* layoutsForm = new QFormLayout();
-    layoutsForm->addRow(QStringLiteral("Active layouts"), layoutsEdit_);
-    layoutsForm->addRow(QStringLiteral("Default layout"), defaultLayoutCombo_);
-    tabs->addTab(makePage(tabs, layoutsForm), QStringLiteral("Layouts"));
+    layoutsForm->addRow(QStringLiteral("Используемые раскладки"), layoutsEdit_);
+    layoutsForm->addRow(QStringLiteral("Раскладка по умолчанию"), defaultLayoutCombo_);
+    tabs->addTab(makePage(tabs, layoutsForm), QStringLiteral("Раскладки"));
 
     toggleLayoutShortcut_ = new QKeySequenceEdit();
     convertLastWordShortcut_ = new QKeySequenceEdit();
@@ -66,12 +66,12 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     openSettingsShortcut_ = new QKeySequenceEdit();
     toggleEnabledShortcut_ = new QKeySequenceEdit();
     auto* hotkeysForm = new QFormLayout();
-    hotkeysForm->addRow(QStringLiteral("Toggle layout"), toggleLayoutShortcut_);
-    hotkeysForm->addRow(QStringLiteral("Convert last word"), convertLastWordShortcut_);
-    hotkeysForm->addRow(QStringLiteral("Convert selection"), convertSelectionShortcut_);
-    hotkeysForm->addRow(QStringLiteral("Open settings"), openSettingsShortcut_);
-    hotkeysForm->addRow(QStringLiteral("Toggle enabled"), toggleEnabledShortcut_);
-    tabs->addTab(makePage(tabs, hotkeysForm), QStringLiteral("Hotkeys"));
+    hotkeysForm->addRow(QStringLiteral("Сменить раскладку"), toggleLayoutShortcut_);
+    hotkeysForm->addRow(QStringLiteral("Последнее слово"), convertLastWordShortcut_);
+    hotkeysForm->addRow(QStringLiteral("Выделенный текст (KDE)"), convertSelectionShortcut_);
+    hotkeysForm->addRow(QStringLiteral("Открыть настройки"), openSettingsShortcut_);
+    hotkeysForm->addRow(QStringLiteral("Включить / выключить"), toggleEnabledShortcut_);
+    tabs->addTab(makePage(tabs, hotkeysForm), QStringLiteral("Горячие клавиши"));
 
     targetPolicyCombo_ = new QComboBox();
     targetPolicyCombo_->addItem(QStringLiteral("Explicit allowlist only"), true);
@@ -144,28 +144,19 @@ SettingsWindow::SettingsWindow(QWidget* parent)
 
     rememberPerWindowCheckBox_ = new QCheckBox(QStringLiteral("Remember layout per window"));
     rememberPerAppCheckBox_ = new QCheckBox(QStringLiteral("Remember layout per application"));
-    preserveCaseCheckBox_ = new QCheckBox(QStringLiteral("Preserve case"));
-    preservePunctuationCheckBox_ = new QCheckBox(QStringLiteral("Preserve punctuation"));
-    autoConvertCheckBox_ = new QCheckBox(QStringLiteral("Enable delayed automatic conversion on X11"));
+    preserveCaseCheckBox_ = new QCheckBox(QStringLiteral("Сохранять регистр"));
+    preservePunctuationCheckBox_ = new QCheckBox(QStringLiteral("Сохранять пунктуацию"));
+    switchLayoutAfterConversionCheckBox_ = new QCheckBox(QStringLiteral("Переключать раскладку после транслитерации"));
     heuristicsCheckBox_ = new QCheckBox(QStringLiteral("Enable layout heuristics"));
-    autoConvertDelayCombo_ = new QComboBox();
-    autoConvertDelayCombo_->addItem(QStringLiteral("150 ms"), 150);
-    autoConvertDelayCombo_->addItem(QStringLiteral("250 ms"), 250);
-    autoConvertDelayCombo_->addItem(QStringLiteral("350 ms"), 350);
-    autoConvertDelayCombo_->addItem(QStringLiteral("450 ms"), 450);
-    autoConvertDelayCombo_->addItem(QStringLiteral("600 ms"), 600);
-    autoConvertDelayCombo_->addItem(QStringLiteral("800 ms"), 800);
     auto* behaviorLayout = new QVBoxLayout();
     behaviorLayout->addWidget(rememberPerWindowCheckBox_);
     behaviorLayout->addWidget(rememberPerAppCheckBox_);
     behaviorLayout->addWidget(preserveCaseCheckBox_);
     behaviorLayout->addWidget(preservePunctuationCheckBox_);
-    behaviorLayout->addWidget(autoConvertCheckBox_);
+    behaviorLayout->addWidget(switchLayoutAfterConversionCheckBox_);
     behaviorLayout->addWidget(heuristicsCheckBox_);
-    behaviorLayout->addWidget(new QLabel(QStringLiteral("Automatic conversion delay")));
-    behaviorLayout->addWidget(autoConvertDelayCombo_);
     behaviorLayout->addStretch();
-    tabs->addTab(makePage(tabs, behaviorLayout), QStringLiteral("Behavior"));
+    tabs->addTab(makePage(tabs, behaviorLayout), QStringLiteral("Поведение"));
 
     loggingLevelCombo_ = new QComboBox();
     loggingLevelCombo_->addItems({
@@ -247,10 +238,8 @@ void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& c
     excludedWindowClassesEdit_->setPlainText(config.excludedWindowClasses.join('\n'));
     preserveCaseCheckBox_->setChecked(config.conversion.preserveCase);
     preservePunctuationCheckBox_->setChecked(config.conversion.preservePunctuation);
-    autoConvertCheckBox_->setChecked(config.conversion.autoConvertEnabled);
+    switchLayoutAfterConversionCheckBox_->setChecked(config.conversion.switchLayoutAfterConversion);
     heuristicsCheckBox_->setChecked(config.conversion.heuristicsEnabled);
-    const int delayIndex = qMax(0, autoConvertDelayCombo_->findData(config.conversion.autoConvertDelayMs));
-    autoConvertDelayCombo_->setCurrentIndex(delayIndex);
     loggingLevelCombo_->setCurrentText(FlamentineSwitcher::Core::toString(config.logging.level));
     logFileCheckBox_->setChecked(config.logging.fileEnabled);
     syncTargetPolicyUi();
@@ -313,9 +302,9 @@ FlamentineSwitcher::Core::AppConfig SettingsWindow::buildConfig() const {
     config.excludedWindowClasses = Utils::StringUtils::splitLines(excludedWindowClassesEdit_->toPlainText());
     config.conversion.preserveCase = preserveCaseCheckBox_->isChecked();
     config.conversion.preservePunctuation = preservePunctuationCheckBox_->isChecked();
-    config.conversion.autoConvertEnabled = autoConvertCheckBox_->isChecked();
+    config.conversion.switchLayoutAfterConversion = switchLayoutAfterConversionCheckBox_->isChecked();
     config.conversion.heuristicsEnabled = heuristicsCheckBox_->isChecked();
-    config.conversion.autoConvertDelayMs = autoConvertDelayCombo_->currentData().toInt();
+    config.conversion.autoConvertEnabled = false;
     config.logging.level = FlamentineSwitcher::Core::logLevelFromString(loggingLevelCombo_->currentText());
     config.logging.fileEnabled = logFileCheckBox_->isChecked();
     return config;

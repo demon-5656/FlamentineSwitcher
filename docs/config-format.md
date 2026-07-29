@@ -21,37 +21,24 @@ Example:
   "rememberLayoutPerApp": false,
   "notificationsEnabled": true,
   "autoStart": false,
-  "requireAllowedTargets": true,
-  "allowedApps": [
-    "org.telegram.desktop",
-    "code",
-    "firefox"
-  ],
-  "allowedWindowClasses": [
-    "code",
-    "firefox"
-  ],
+  "requireAllowedTargets": false,
+  "allowedApps": [],
+  "allowedWindowClasses": [],
   "hotkeys": {
     "toggleLayout": "Meta+Space",
     "convertLastWord": "Pause",
-    "convertSelection": "Meta+Pause",
+    "convertSelection": "Meta+End",
     "openSettings": "Meta+Alt+K",
     "toggleEnabled": "Meta+Alt+S"
   },
-  "excludedApps": [
-    "konsole",
-    "alacritty",
-    "steam_app_*"
-  ],
-  "excludedWindowClasses": [
-    "yakuake"
-  ],
+  "excludedApps": [],
+  "excludedWindowClasses": [],
   "conversion": {
     "preserveCase": true,
     "preservePunctuation": true,
+    "switchLayoutAfterConversion": true,
     "autoConvertEnabled": false,
-    "heuristicsEnabled": true,
-    "autoConvertDelayMs": 450
+    "heuristicsEnabled": true
   },
   "logging": {
     "level": "info",
@@ -60,7 +47,7 @@ Example:
 }
 ```
 
-`autoConvertDelayMs` controls the X11-only delayed replacement timer. The backend only buffers committed words in explicitly allowed applications and cancels replacement if the user keeps typing before the timer expires.
+`autoConvertEnabled` is retained only for compatibility with earlier configuration files.  It is ignored: FlamentineSwitcher converts only when its manual action is invoked.
 
 `rememberLayoutPerWindow` and `rememberLayoutPerApp` control remembered layouts for allowed X11 targets. The user-facing settings live in `config.json`, while the last known per-window and per-app layout state is persisted separately in `state.json` so it survives restarts.
 

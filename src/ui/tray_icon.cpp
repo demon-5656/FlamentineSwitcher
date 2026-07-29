@@ -31,15 +31,15 @@ bool sameTargetContext(const FlamentineSwitcher::Core::WindowContext& left, cons
 TrayIcon::TrayIcon(QObject* parent)
     : QObject(parent)
     , menu_(new QMenu()) {
-    statusAction_ = menu_->addAction(QStringLiteral("Layout: --"));
+    statusAction_ = menu_->addAction(QStringLiteral("Раскладка: --"));
     statusAction_->setEnabled(false);
     menu_->addSeparator();
 
-    toggleEnabledAction_ = menu_->addAction(QStringLiteral("Enabled"));
+    toggleEnabledAction_ = menu_->addAction(QStringLiteral("Включено"));
     toggleEnabledAction_->setCheckable(true);
     toggleEnabledAction_->setChecked(true);
 
-    toggleLayoutAction_ = menu_->addAction(QStringLiteral("Switch Layout"));
+    toggleLayoutAction_ = menu_->addAction(QStringLiteral("Сменить раскладку"));
     currentTargetMenu_ = menu_->addMenu(QStringLiteral("Current Target"));
     currentTargetStatusAction_ = currentTargetMenu_->addAction(QStringLiteral("No focused target"));
     currentTargetAppAction_ = currentTargetMenu_->addAction(QStringLiteral("App: —"));
@@ -57,11 +57,11 @@ TrayIcon::TrayIcon(QObject* parent)
     currentTargetFullscreenAction_->setEnabled(false);
     copyCurrentTargetInfoAction_ = menu_->addAction(QStringLiteral("Copy Target Info"));
     showTargetHistoryAction_ = menu_->addAction(QStringLiteral("Target History"));
-    convertLastWordAction_ = menu_->addAction(QStringLiteral("Convert Last Word"));
-    convertSelectionAction_ = menu_->addAction(QStringLiteral("Convert Selection"));
+    convertLastWordAction_ = menu_->addAction(QStringLiteral("Исправить последнее слово"));
+    convertSelectionAction_ = menu_->addAction(QStringLiteral("Транслитерировать выделение"));
     menu_->addSeparator();
-    openSettingsAction_ = menu_->addAction(QStringLiteral("Settings"));
-    quitAction_ = menu_->addAction(QStringLiteral("Quit"));
+    openSettingsAction_ = menu_->addAction(QStringLiteral("Настройки"));
+    quitAction_ = menu_->addAction(QStringLiteral("Выход"));
 
     trayIcon_.setContextMenu(menu_);
     rebuildIcon();
@@ -143,8 +143,8 @@ void TrayIcon::rebuildMenuLabels() {
     const bool hasIdentifiedTarget = !currentTargetContext_.appName.trimmed().isEmpty()
         || !currentTargetContext_.windowClass.trimmed().isEmpty() || !currentTargetContext_.windowId.trimmed().isEmpty();
 
-    statusAction_->setText(QStringLiteral("Layout: %1").arg(currentLayout_));
-    toggleEnabledAction_->setText(enabled_ ? QStringLiteral("Enabled") : QStringLiteral("Disabled"));
+    statusAction_->setText(QStringLiteral("Раскладка: %1").arg(currentLayout_));
+    toggleEnabledAction_->setText(enabled_ ? QStringLiteral("Включено") : QStringLiteral("Выключено"));
     currentTargetStatusAction_->setText(
         hasIdentifiedTarget ? QStringLiteral("Detected focused target")
                             : (currentTargetStatus_.isEmpty() ? QStringLiteral("No focused target")

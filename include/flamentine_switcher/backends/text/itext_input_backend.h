@@ -22,6 +22,10 @@ public:
     virtual QString backendName() const = 0;
     virtual void applyConfig(const FlamentineSwitcher::Core::AppConfig& config) = 0;
     virtual void setEnabled(bool enabled) = 0;
+    virtual bool copyActiveSelection() = 0;
+    // Replaces the active X11 selection by pasting the already prepared clipboard text.
+    // Backends that cannot inject input must return false and explain why in lastError().
+    virtual bool replaceActiveSelection() = 0;
     virtual bool replacePendingWord(quint64 tokenId, const QString& replacement) = 0;
     virtual QString lastError() const = 0;
 

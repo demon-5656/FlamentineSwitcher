@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Transliterate selected text
+Comment=Transliterate the active text selection with FlamentineSwitcher
+Exec=flamentine-switcher --transliterate-selection
+Icon=input-keyboard
+Categories=Utility;Qt;
+NoDisplay=true
+StartupNotify=false
+X-KDE-Shortcuts=Meta+End

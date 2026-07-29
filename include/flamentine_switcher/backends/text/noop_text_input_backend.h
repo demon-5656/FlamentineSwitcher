@@ -14,11 +14,14 @@ public:
     QString backendName() const override;
     void applyConfig(const FlamentineSwitcher::Core::AppConfig& config) override;
     void setEnabled(bool enabled) override;
+    bool copyActiveSelection() override;
+    bool replaceActiveSelection() override;
     bool replacePendingWord(quint64 tokenId, const QString& replacement) override;
     QString lastError() const override;
 
 private:
-    QString lastError_;
+    bool injectShortcut(int keyCode) const;
+    mutable QString lastError_;
 };
 
 }  // namespace FlamentineSwitcher::Backends::Text

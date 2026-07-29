@@ -52,6 +52,7 @@ target_include_directories(flamentine_core PUBLIC include)
 target_link_libraries(flamentine_core
     PUBLIC
         Qt6::Core
+        Qt6::DBus
         Qt6::Gui
         Qt6::Widgets
         flamentine_conversion
@@ -148,6 +149,10 @@ target_link_libraries(flamentine-switcher
 install(TARGETS flamentine-switcher RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(
     FILES packaging/desktop/flamentine-switcher.desktop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)
+install(
+    FILES packaging/desktop/flamentine-transliterate-selection.desktop
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
 )
 install(

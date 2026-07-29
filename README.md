@@ -29,12 +29,14 @@ This repository now contains the initial project skeleton plus an MVP-oriented f
 - D-Bus service skeleton
 - unit tests for config, conversion and heuristics
 
-The current text conversion workflow is intentionally conservative:
+The default workflow is deliberately manual and instantaneous:
 
-- selection conversion operates on X11 selection clipboard or regular clipboard
-- last-word conversion currently transforms the last clipboard token
-- when deny-by-default mode is enabled, conversion is blocked unless the active target is explicitly allowed
-- X11 delayed auto-conversion only buffers committed words in explicitly allowed targets and cancels replacement if typing continues
+- select text and invoke **Transliterate Selection** (`Meta+End` by default)
+- on X11 the selected text is replaced immediately
+- on KDE Wayland the same action uses `ydotool` to send `Ctrl+C` and `Ctrl+V`, so the selected text is replaced immediately
+- after conversion, the active KDE layout is switched to match the resulting text (`us` or `ru`)
+- KDE Wayland needs a running `ydotoold` input daemon; then bind `flamentine-switcher --transliterate-selection` as a Custom Shortcut
+- automatic typed-word observation is not enabled; conversion occurs only when the user invokes the action
 - target policy UI now exposes an explicit allowlist-only mode instead of a hidden checkbox
 - tray and settings can add the currently focused target to the allowlist in one action
 - tray target inspector now exposes separate quick actions for `app only`, `WM_CLASS only`, or both
@@ -118,13 +120,13 @@ Wayland support in KDE Plasma is now usable for safe/manual flows:
 
 - current layout detection through `org.kde.KeyboardLayouts`
 - manual layout switching through `org.kde.KeyboardLayouts`
-- tray and settings
+- tray, settings and D-Bus action for KDE Custom Shortcuts
 - tray target inspector with quick allowlist actions
 
 Wayland limitations still remain:
 
-- no global X11-style hotkeys in the current implementation
-- no transparent low-level text interception
+- no global X11-style hotkeys in the current implementation; bind `flamentine-switcher --transliterate-selection` in KDE Custom Shortcuts
+- text replacement uses the opt-in `ydotool` virtual input device (`Ctrl+C` then `Ctrl+V`)
 
 See [docs/wayland-limitations.md](docs/wayland-limitations.md) for details.
 
