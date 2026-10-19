@@ -20,14 +20,13 @@ FlamentineSwitcher is split into clear layers so platform code can evolve withou
 - `IHotkeyBackend` abstracts global shortcuts.
 - `X11HotkeyBackend` uses passive grabs on X11.
 - `IWindowBackend` is reserved for per-window and per-app memory logic.
-- `ITextInputBackend` abstracts typed-word observation and delayed replacement.
-- `X11TextInputBackend` observes committed words on X11 and only keeps state for allowlisted targets.
+- `ITextInputBackend` abstracts copying and replacing the active selection.
+- `X11TextInputBackend` copies and replaces selected text on X11.
 
 ### Conversion
 
 - `LayoutMaps` owns physical-key layout maps.
-- `TextConverter` performs transliteration-like key remapping without language translation.
-- `LayoutHeuristics` estimates when a word was probably typed in the wrong layout.
+- `TextConverter` performs direct physical-key RU↔EN remapping; it never analyzes the text or detects a language.
 
 ### UI and Services
 

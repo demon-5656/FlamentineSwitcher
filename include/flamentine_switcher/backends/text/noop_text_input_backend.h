@@ -12,11 +12,8 @@ public:
 
     bool isSupported() const override;
     QString backendName() const override;
-    void applyConfig(const FlamentineSwitcher::Core::AppConfig& config) override;
-    void setEnabled(bool enabled) override;
     bool copyActiveSelection() override;
     bool replaceActiveSelection() override;
-    bool replacePendingWord(quint64 tokenId, const QString& replacement) override;
     QString lastError() const override;
 
 private:

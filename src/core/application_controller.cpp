@@ -12,7 +12,7 @@
 #include "flamentine_switcher/backends/layout/ilayout_backend.h"
 #include "flamentine_switcher/backends/text/itext_input_backend.h"
 #include "flamentine_switcher/backends/window/iwindow_backend.h"
-#include "flamentine_switcher/conversion/heuristics.h"
+#include "flamentine_switcher/conversion/layout_maps.h"
 #include "flamentine_switcher/core/rules.h"
 #include "flamentine_switcher/core/settings_manager.h"
 #include "flamentine_switcher/services/autostart_service.h"
@@ -46,6 +46,26 @@ bool appendIfMissing(QStringList& values, const QString& value) {
     return true;
 }
 
+QString targetDeniedMessage(const WindowContext& context) {
+    if (context.appName.isEmpty() && context.windowClass.isEmpty()) {
+        return QStringLiteral("Current application is not identified or not allowed for conversion");
+    }
+    return QStringLiteral("Current application is not allowed for conversion: %1")
+        .arg(!context.appName.isEmpty() ? context.appName : context.windowClass);
+}
+
+std::optional<FlamentineSwitcher::Conversion::ConversionDirection> directionForTrailingScript(const QString& text) {
+    for (auto it = text.crbegin(); it != text.crend(); ++it) {
+        if (FlamentineSwitcher::Conversion::isLatinLetter(*it)) {
+            return FlamentineSwitcher::Conversion::ConversionDirection::UsToRu;
+        }
+        if (FlamentineSwitcher::Conversion::isCyrillicLetter(*it)) {
+            return FlamentineSwitcher::Conversion::ConversionDirection::RuToUs;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 ApplicationController::ApplicationController(SettingsManager& settingsManager,
@@ -69,47 +89,19 @@ ApplicationController::ApplicationController(SettingsManager& settingsManager,
     , settingsWindow_(settingsWindow)
     , notifications_(notifications) {
     refreshTimer_.setInterval(900);
-    autoConvertTimer_.setSingleShot(true);
     layoutMemoryPersistTimer_.setSingleShot(true);
     layoutMemoryPersistTimer_.setInterval(700);
     selectionClipboardWaitTimer_.setInterval(40);
 
     connect(&refreshTimer_, &QTimer::timeout, this, &ApplicationController::refreshLayout);
-    connect(&autoConvertTimer_, &QTimer::timeout, this, &ApplicationController::processPendingAutoConversion);
     connect(&layoutMemoryPersistTimer_, &QTimer::timeout, this, &ApplicationController::persistLayoutMemory);
     connect(&selectionClipboardWaitTimer_, &QTimer::timeout, this, &ApplicationController::waitForSelectionClipboard);
-    connect(&trayIcon_, &Ui::TrayIcon::toggleLayoutRequested, this, &ApplicationController::toggleLayout);
-    connect(&trayIcon_, &Ui::TrayIcon::convertLastWordRequested, this, &ApplicationController::convertLastWord);
     connect(&trayIcon_, &Ui::TrayIcon::convertSelectionRequested, this, &ApplicationController::convertSelection);
     connect(&trayIcon_, &Ui::TrayIcon::openSettingsRequested, this, &ApplicationController::openSettings);
-    connect(&trayIcon_, &Ui::TrayIcon::copyCurrentTargetInfoRequested, this, &ApplicationController::copyCurrentTargetInfo);
-    connect(&trayIcon_, &Ui::TrayIcon::allowCurrentAppRequested, this, &ApplicationController::allowCurrentApp);
-    connect(&trayIcon_,
-            &Ui::TrayIcon::allowCurrentWindowClassRequested,
-            this,
-            &ApplicationController::allowCurrentWindowClass);
-    connect(&trayIcon_, &Ui::TrayIcon::allowCurrentTargetRequested, this, &ApplicationController::allowCurrentTarget);
-    connect(&trayIcon_, &Ui::TrayIcon::enabledToggled, this, [this](const bool enabled) {
-        setEnabled(enabled);
-    });
     connect(&trayIcon_, &Ui::TrayIcon::quitRequested, qApp, &QCoreApplication::quit);
     connect(&settingsWindow_, &Ui::SettingsWindow::configApplied, this, &ApplicationController::applyConfig);
-    connect(&settingsWindow_, &Ui::SettingsWindow::allowCurrentAppRequested, this, &ApplicationController::allowCurrentApp);
-    connect(
-        &settingsWindow_, &Ui::SettingsWindow::copyCurrentTargetInfoRequested, this, &ApplicationController::copyCurrentTargetInfo);
-    connect(&settingsWindow_,
-            &Ui::SettingsWindow::allowCurrentWindowClassRequested,
-            this,
-            &ApplicationController::allowCurrentWindowClass);
-    connect(&settingsWindow_, &Ui::SettingsWindow::allowCurrentTargetRequested, this, &ApplicationController::allowCurrentTarget);
-    connect(&settingsWindow_, &Ui::SettingsWindow::importRequested, this, &ApplicationController::importConfig);
-    connect(&settingsWindow_, &Ui::SettingsWindow::exportRequested, this, &ApplicationController::exportConfig);
     connect(&hotkeyBackend_, &Backends::Hotkeys::IHotkeyBackend::hotkeyTriggered, this, &ApplicationController::handleHotkeyAction);
     connect(&layoutBackend_, &Backends::Layout::ILayoutBackend::layoutChanged, this, &ApplicationController::refreshLayout);
-    connect(&textInputBackend_,
-            &Backends::Text::ITextInputBackend::wordCommitted,
-            this,
-            &ApplicationController::handleObservedWordCommitted);
     connect(qApp, &QCoreApplication::aboutToQuit, this, &ApplicationController::persistLayoutMemory);
 }
 
@@ -117,11 +109,10 @@ void ApplicationController::initialize() {
     config_ = settingsManager_.load();
     Utils::Logging::initialize(config_.logging);
     settingsWindow_.loadFromConfig(config_);
-    settingsWindow_.setCurrentTargetContext({}, windowBackend_.lastError());
     trayIcon_.setEnabledState(config_.enabled);
     autostartService_.setEnabled(config_.autoStart);
     registerHotkeys();
-    updateTextInputBackendState();
+    clearLayoutMemoryIfDisabled();
     trayIcon_.show();
     if (config_.rememberLayoutPerWindow || config_.rememberLayoutPerApp) {
         const auto state = settingsManager_.loadLayoutMemoryState();
@@ -185,18 +176,7 @@ bool ApplicationController::toggleLayout() {
 }
 
 QString ApplicationController::convertLastWord() {
-    if (!config_.enabled) {
-        notifyInfo(QStringLiteral("Application is disabled"));
-        return {};
-    }
-
-    const WindowContext context = windowBackend_.currentContext();
-    if (!Rules::isAllowed(config_, context)) {
-        notifyInfo(
-            context.appName.isEmpty() && context.windowClass.isEmpty()
-                ? QStringLiteral("Current application is not identified or not allowed for conversion")
-                : QStringLiteral("Current application is not allowed for conversion: %1")
-                      .arg(!context.appName.isEmpty() ? context.appName : context.windowClass));
+    if (!conversionPermitted()) {
         return {};
     }
 
@@ -206,25 +186,19 @@ QString ApplicationController::convertLastWord() {
         return {};
     }
 
-    const QString converted = textConverter_.convertLastWordInText(sourceText);
+    const auto direction = resolveDirectionForCurrentLayout();
+    if (!direction.has_value()) {
+        return {};
+    }
+
+    const QString converted = textConverter_.convertLastWordInText(sourceText, direction.value());
     replaceClipboardText(converted);
     notifyInfo(QStringLiteral("Last clipboard token converted"));
     return converted;
 }
 
 QString ApplicationController::convertSelection() {
-    if (!config_.enabled) {
-        notifyInfo(QStringLiteral("Application is disabled"));
-        return {};
-    }
-
-    const WindowContext context = windowBackend_.currentContext();
-    if (!Rules::isAllowed(config_, context)) {
-        notifyInfo(
-            context.appName.isEmpty() && context.windowClass.isEmpty()
-                ? QStringLiteral("Current application is not identified or not allowed for conversion")
-                : QStringLiteral("Current application is not allowed for conversion: %1")
-                      .arg(!context.appName.isEmpty() ? context.appName : context.windowClass));
+    if (!conversionPermitted()) {
         return {};
     }
 
@@ -291,34 +265,43 @@ void ApplicationController::waitForSelectionClipboard() {
 void ApplicationController::finishSelectionConversion() {
     selectionConversionPending_ = false;
     const QString sourceText = copiedSelectionText_;
-    const QString converted = convertSelectionClipboardText(sourceText);
     copiedSelectionText_.clear();
     clipboardBeforeSelectionCopy_.clear();
+    const QString converted = convertSelectionClipboardText(sourceText, Conversion::ConversionDirection::AutoDetect);
     if (converted.isEmpty()) {
+        return;
+    }
+    if (converted == sourceText) {
+        notifyInfo(QStringLiteral("Selection contains no convertible letters"));
         return;
     }
 
     if (textInputBackend_.replaceActiveSelection()) {
         if (config_.conversion.switchLayoutAfterConversion) {
-            const auto direction = textConverter_.resolveDirection(sourceText);
-            const QString targetLayoutId = targetLayoutIdForDirection(direction);
-            if (config_.layouts.contains(targetLayoutId) && currentLayout() != targetLayoutId) {
-                setLayout(targetLayoutId);
+            // Auto-detection can convert a mixed-script selection. Keep the
+            // active layout aligned with the final convertible segment so the
+            // next character continues that segment in the expected layout.
+            const auto direction = directionForTrailingScript(sourceText);
+            if (direction.has_value()) {
+                const QString targetLayoutId = targetLayoutIdForDirection(direction.value());
+                if (config_.layouts.contains(targetLayoutId) && currentLayout() != targetLayoutId) {
+                    setLayout(targetLayoutId);
+                }
             }
         }
-        notifyInfo(QStringLiteral("Selection transliterated"));
+        notifyInfo(QStringLiteral("Selection keyboard layout converted"));
     } else {
         notifyWarning(textInputBackend_.lastError());
     }
 }
 
-QString ApplicationController::convertSelectionClipboardText(const QString& sourceText) {
+QString ApplicationController::convertSelectionClipboardText(const QString& sourceText, const Conversion::ConversionDirection direction) {
     if (sourceText.trimmed().isEmpty()) {
         notifyWarning(QStringLiteral("Ctrl+C did not put selected text into the clipboard"));
         return {};
     }
 
-    const QString converted = textConverter_.convertText(sourceText);
+    const QString converted = textConverter_.convertText(sourceText, direction);
     replaceClipboardText(converted);
     return converted;
 }
@@ -408,7 +391,7 @@ void ApplicationController::applyConfig(const AppConfig& config) {
     settingsWindow_.loadFromConfig(config_);
     trayIcon_.setEnabledState(config_.enabled);
     registerHotkeys();
-    updateTextInputBackendState();
+    clearLayoutMemoryIfDisabled();
     refreshLayout();
     emit enabledChanged(config_.enabled);
 }
@@ -468,11 +451,9 @@ void ApplicationController::handleHotkeyAction(const FlamentineSwitcher::Core::H
 
 bool ApplicationController::setEnabled(const bool enabled) {
     config_.enabled = enabled;
-    pendingAutoConversion_ = {};
-    autoConvertTimer_.stop();
     trayIcon_.setEnabledState(enabled);
     settingsWindow_.loadFromConfig(config_);
-    updateTextInputBackendState();
+    clearLayoutMemoryIfDisabled();
     if (!settingsManager_.save(config_)) {
         notifyWarning(settingsManager_.lastError());
     }
@@ -549,7 +530,6 @@ QString ApplicationController::formatTargetInfo(const WindowContext& context) co
 
 void ApplicationController::updateCurrentTargetUi(const WindowContext& context) {
     trayIcon_.setCurrentTargetContext(context, windowBackend_.lastError());
-    settingsWindow_.setCurrentTargetContext(context, windowBackend_.lastError());
 }
 
 void ApplicationController::syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId) {
@@ -583,17 +563,11 @@ void ApplicationController::syncRememberedLayout(const WindowContext& context, c
     }
 }
 
-void ApplicationController::updateTextInputBackendState() {
-    textInputBackend_.applyConfig(config_);
-    // This application is intentionally click-to-convert only.  Do not start the
-    // XInput observer even if an old configuration contains the retired option.
-    pendingAutoConversion_ = {};
-    autoConvertTimer_.stop();
+void ApplicationController::clearLayoutMemoryIfDisabled() {
     if (!config_.rememberLayoutPerWindow && !config_.rememberLayoutPerApp) {
         layoutMemory_.clear();
         persistLayoutMemory();
     }
-    textInputBackend_.setEnabled(false);
 }
 
 void ApplicationController::scheduleLayoutMemoryPersist() {
@@ -610,78 +584,40 @@ void ApplicationController::persistLayoutMemory() {
     }
 }
 
+std::optional<Conversion::ConversionDirection> ApplicationController::conversionDirectionForLayout(const QString& layoutId) const {
+    if (layoutId == QStringLiteral("us")) {
+        return Conversion::ConversionDirection::UsToRu;
+    }
+    if (layoutId == QStringLiteral("ru")) {
+        return Conversion::ConversionDirection::RuToUs;
+    }
+    return std::nullopt;
+}
+
 QString ApplicationController::targetLayoutIdForDirection(const Conversion::ConversionDirection direction) const {
     return direction == Conversion::ConversionDirection::UsToRu ? QStringLiteral("ru") : QStringLiteral("us");
 }
 
-void ApplicationController::handleObservedWordCommitted(const quint64 tokenId,
-                                                        const QString& word,
-                                                        const FlamentineSwitcher::Core::WindowContext& context) {
-    if (!config_.enabled || !config_.conversion.autoConvertEnabled) {
-        return;
+bool ApplicationController::conversionPermitted() const {
+    if (!config_.enabled) {
+        notifyInfo(QStringLiteral("Application is disabled"));
+        return false;
     }
 
+    const WindowContext context = windowBackend_.currentContext();
     if (!Rules::isAllowed(config_, context)) {
-        return;
+        notifyInfo(targetDeniedMessage(context));
+        return false;
     }
-
-    pendingAutoConversion_.tokenId = tokenId;
-    pendingAutoConversion_.word = word;
-    pendingAutoConversion_.context = context;
-    pendingAutoConversion_.valid = true;
-    autoConvertTimer_.start(qMax(0, config_.conversion.autoConvertDelayMs));
+    return true;
 }
 
-void ApplicationController::processPendingAutoConversion() {
-    if (!pendingAutoConversion_.valid || !config_.enabled || !config_.conversion.autoConvertEnabled) {
-        pendingAutoConversion_ = {};
-        return;
+std::optional<Conversion::ConversionDirection> ApplicationController::resolveDirectionForCurrentLayout() const {
+    const auto direction = conversionDirectionForLayout(currentLayout());
+    if (!direction.has_value()) {
+        notifyWarning(QStringLiteral("Current layout is not supported for RU/EN conversion"));
     }
-
-    using namespace FlamentineSwitcher::Conversion;
-
-    ConversionDirection direction = ConversionDirection::AutoDetect;
-    if (config_.conversion.heuristicsEnabled) {
-        const LayoutHeuristics heuristics;
-        const LayoutAssessment assessment = heuristics.assessWord(pendingAutoConversion_.word);
-        if (!assessment.looksMistyped) {
-            pendingAutoConversion_ = {};
-            return;
-        }
-
-        direction = assessment.target == SuggestedLayout::Ru ? ConversionDirection::UsToRu : ConversionDirection::RuToUs;
-    } else {
-        direction = textConverter_.resolveDirection(pendingAutoConversion_.word);
-    }
-
-    const QString converted = textConverter_.convertText(pendingAutoConversion_.word, direction);
-    if (converted.isEmpty() || converted == pendingAutoConversion_.word) {
-        pendingAutoConversion_ = {};
-        return;
-    }
-
-    const QString targetLayoutId = targetLayoutIdForDirection(direction);
-    if (!config_.layouts.contains(targetLayoutId)) {
-        qWarning().noquote() << QStringLiteral("Skipping delayed replacement because layout '%1' is not configured").arg(targetLayoutId);
-        pendingAutoConversion_ = {};
-        return;
-    }
-
-    if (currentLayout() != targetLayoutId && !setLayout(targetLayoutId)) {
-        qWarning().noquote() << QStringLiteral("Skipping delayed replacement because layout switch failed: %1").arg(lastError_);
-        pendingAutoConversion_ = {};
-        return;
-    }
-
-    if (!textInputBackend_.replacePendingWord(pendingAutoConversion_.tokenId, converted)) {
-        const QString backendError = textInputBackend_.lastError();
-        if (!backendError.contains(QStringLiteral("Typing continued"), Qt::CaseInsensitive)
-            && !backendError.contains(QStringLiteral("Active window changed"), Qt::CaseInsensitive)) {
-            qWarning().noquote() << backendError;
-        }
-    }
-
-    pendingAutoConversion_ = {};
+    return direction;
 }
 
 void ApplicationController::notifyInfo(const QString& message) const {

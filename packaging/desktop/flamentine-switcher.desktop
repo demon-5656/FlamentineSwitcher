@@ -2,7 +2,7 @@
 Type=Application
 Name=FlamentineSwitcher
 Comment=Keyboard layout switcher and text conversion utility for Plasma
-Exec=flamentine-switcher
+Exec=@FLAMENTINE_SWITCHER_EXECUTABLE@
 Icon=input-keyboard
 Categories=Utility;Qt;
 StartupNotify=false
@@ -11,4 +11,4 @@ Actions=TransliterateSelection;
 
 [Desktop Action TransliterateSelection]
 Name=Transliterate selected text
-Exec=flamentine-switcher --transliterate-selection
+Exec=@FLAMENTINE_SWITCHER_EXECUTABLE@ --transliterate-selection

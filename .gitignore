@@ -1,4 +1,9 @@
 build/
+build-*/
+.cmake/
+_CPack_Packages/
+CMakeFiles/
+flamentine-switcher-*-linux-x86_64.tar.gz
 .cache/
 .idea/
 *.user

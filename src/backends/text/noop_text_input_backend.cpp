@@ -17,13 +17,6 @@ QString NoopTextInputBackend::backendName() const {
     return QStringLiteral("ydotool-input-injector");
 }
 
-void NoopTextInputBackend::applyConfig(const FlamentineSwitcher::Core::AppConfig& config) {
-    Q_UNUSED(config)
-}
-
-void NoopTextInputBackend::setEnabled(const bool enabled) {
-    Q_UNUSED(enabled)
-}
 
 bool NoopTextInputBackend::copyActiveSelection() {
     return injectShortcut(46); // Linux input event KEY_C
@@ -54,11 +47,6 @@ bool NoopTextInputBackend::injectShortcut(const int keyCode) const {
     return true;
 }
 
-bool NoopTextInputBackend::replacePendingWord(const quint64 tokenId, const QString& replacement) {
-    Q_UNUSED(tokenId)
-    Q_UNUSED(replacement)
-    return false;
-}
 
 QString NoopTextInputBackend::lastError() const {
     return lastError_;

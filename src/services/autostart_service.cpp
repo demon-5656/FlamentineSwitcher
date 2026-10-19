@@ -1,5 +1,6 @@
 #include "flamentine_switcher/services/autostart_service.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QStandardPaths>
@@ -50,18 +51,27 @@ bool AutostartService::writeDesktopFile() const {
         return false;
     }
 
-    file.write(
+    const QString executable = QCoreApplication::applicationFilePath();
+    if (executable.isEmpty()) {
+        lastError_ = QStringLiteral("Unable to determine the FlamentineSwitcher executable path");
+        return false;
+    }
+
+    const QString desktopEntry = QStringLiteral(
         "[Desktop Entry]\n"
         "Type=Application\n"
         "Name=FlamentineSwitcher\n"
         "Comment=Keyboard layout switcher and text conversion utility\n"
-        "Exec=flamentine-switcher\n"
+        "Exec=%1\n"
         "Icon=input-keyboard\n"
         "OnlyShowIn=KDE;\n"
-        "X-KDE-autostart-phase=2\n");
+        "X-KDE-autostart-phase=2\n"
+        "Terminal=false\n"
+        "NoDisplay=true\n")
+                                     .arg(executable);
+    file.write(desktopEntry.toUtf8());
     file.close();
     return true;
 }
 
 }  // namespace FlamentineSwitcher::Services
-

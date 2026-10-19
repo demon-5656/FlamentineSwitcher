@@ -26,12 +26,7 @@ struct HotkeyConfig {
 };
 
 struct ConversionConfig {
-    bool preserveCase = true;
-    bool preservePunctuation = true;
     bool switchLayoutAfterConversion = true;
-    bool autoConvertEnabled = false;
-    bool heuristicsEnabled = true;
-    int autoConvertDelayMs = 450;
 
     static ConversionConfig fromJsonObject(const QJsonObject& object);
     QJsonObject toJsonObject() const;
@@ -46,11 +41,11 @@ struct LoggingConfig {
 };
 
 struct AppConfig {
-    int version = 1;
+    int version = 2;
     bool enabled = true;
     QStringList layouts = {QStringLiteral("us"), QStringLiteral("ru")};
     QString defaultLayout = QStringLiteral("us");
-    bool rememberLayoutPerWindow = true;
+    bool rememberLayoutPerWindow = false;
     bool rememberLayoutPerApp = false;
     bool notificationsEnabled = true;
     bool autoStart = false;

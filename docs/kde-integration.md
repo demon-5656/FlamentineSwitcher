@@ -1,19 +1,32 @@
-# KDE Plasma: one-click transliteration
+# KDE Plasma 6 Wayland
 
-Start `flamentine-switcher` once (the supplied autostart entry can do this).  On Wayland, a `ydotoold` virtual-input daemon must already be running.  Verify it with:
+## Первичная проверка
 
-```text
-ydotool debug
+После установки запустите:
+
+```bash
+systemctl --user enable --now ydotool.service
+flamentine-switcher --check-wayland
 ```
 
-The installation registers a dedicated KDE launcher for **Transliterate selected text**.  Its global shortcut is `Meta+End`.  If Plasma does not pick it up after installation, log out and back in, then assign that shortcut in **System Settings → Keyboard → Shortcuts**.
+Перед preflight запустите **FlamentineSwitcher** из меню Plasma или включите его автозапуск. Успешный preflight подтверждает `ydotool`, его виртуальное устройство ввода, Klipper, службу раскладок Plasma, установленный shortcut launcher, KDE Global Shortcuts и D-Bus-сервис приложения.
+
+## Горячая клавиша
+
+Запущенный FlamentineSwitcher регистрирует действие **Convert selected text** через KDE Global Shortcuts. Для совместимости desktop launcher **Transliterate selected text** также вызывает:
 
 ```text
 flamentine-switcher --transliterate-selection
 ```
 
-Bind it to one shortcut, for example `Meta+End`.
+По умолчанию назначается `Meta+End`. Если сочетание занято, измените его через **Параметры системы → Клавиатура → Сочетания клавиш**. Launcher обращается к уже запущенному FlamentineSwitcher по D-Bus и не создаёт второй фоновый процесс.
 
-The command only contacts the running FlamentineSwitcher service over the session bus; it does not launch another resident copy.  Select text and press the shortcut.
+## Как работает конвертация
 
-On both Plasma X11 and Wayland, the selection is replaced immediately.  The Wayland implementation intentionally uses `ydotool` to generate `Ctrl+C`, reads the result through Plasma Klipper, and then generates `Ctrl+V`.  It therefore works in applications that accept normal keyboard copy and paste.  Do not start a second `ydotoold` if one is already using the same socket.
+1. Пользователь выделяет текст.
+2. Plasma shortcut запускает client-команду.
+3. Основной процесс отправляет `Ctrl+C` через `ydotool`.
+4. Получает текст через Klipper, преобразует физическую раскладку и вставляет результат `Ctrl+V`.
+5. При включённой настройке переключает активную раскладку Plasma.
+
+Если preflight проходит, но конкретная программа не заменяет текст, проверьте, принимает ли она обычные `Ctrl+C` и `Ctrl+V`.

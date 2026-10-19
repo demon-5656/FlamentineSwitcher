@@ -1,33 +1,11 @@
 #include "flamentine_switcher/conversion/text_converter.h"
 
+#include <optional>
 #include <QRegularExpression>
 
-#include "flamentine_switcher/conversion/heuristics.h"
 #include "flamentine_switcher/conversion/layout_maps.h"
 
 namespace {
-
-FlamentineSwitcher::Conversion::ConversionDirection autoDirection(const QString& text) {
-    using namespace FlamentineSwitcher::Conversion;
-
-    const LayoutHeuristics heuristics;
-    const LayoutAssessment assessment = heuristics.assessWord(text);
-    if (assessment.looksMistyped) {
-        return assessment.target == SuggestedLayout::Ru ? ConversionDirection::UsToRu : ConversionDirection::RuToUs;
-    }
-
-    int latin = 0;
-    int cyrillic = 0;
-    for (const QChar character : text) {
-        if (isLatinLetter(character)) {
-            ++latin;
-        } else if (isCyrillicLetter(character)) {
-            ++cyrillic;
-        }
-    }
-
-    return latin >= cyrillic ? ConversionDirection::UsToRu : ConversionDirection::RuToUs;
-}
 
 QString convertWithMap(const QString& text, const QHash<QChar, QChar>& map) {
     QString result;
@@ -35,11 +13,12 @@ QString convertWithMap(const QString& text, const QHash<QChar, QChar>& map) {
 
     for (const QChar character : text) {
         const auto it = map.constFind(character);
-        result.append(it != map.constEnd() ? it.value() : character);
+        result.append(it == map.constEnd() ? character : it.value());
     }
 
     return result;
 }
+
 
 }  // namespace
 
@@ -50,10 +29,44 @@ QString TextConverter::convertText(const QString& text, ConversionDirection dire
         return {};
     }
 
-    const ConversionDirection resolvedDirection = direction == ConversionDirection::AutoDetect ? resolveDirection(text) : direction;
     const LayoutMapSet& maps = usRuMap();
+    if (direction == ConversionDirection::AutoDetect) {
+        QString result;
+        result.reserve(text.size());
 
-    return resolvedDirection == ConversionDirection::UsToRu
+        std::optional<ConversionDirection> activeDirection;
+        for (const QChar character : text) {
+            if (isLatinLetter(character)) {
+                activeDirection = ConversionDirection::UsToRu;
+                break;
+            }
+            if (isCyrillicLetter(character)) {
+                activeDirection = ConversionDirection::RuToUs;
+                break;
+            }
+        }
+
+        for (const QChar character : text) {
+            if (isLatinLetter(character)) {
+                activeDirection = ConversionDirection::UsToRu;
+            } else if (isCyrillicLetter(character)) {
+                activeDirection = ConversionDirection::RuToUs;
+            }
+
+            if (!activeDirection.has_value()) {
+                result.append(character);
+                continue;
+            }
+
+            const QHash<QChar, QChar>& map = activeDirection.value() == ConversionDirection::UsToRu
+                ? maps.usToRu
+                : maps.ruToUs;
+            result.append(map.value(character, character));
+        }
+        return result;
+    }
+
+    return direction == ConversionDirection::UsToRu
         ? convertWithMap(text, maps.usToRu)
         : convertWithMap(text, maps.ruToUs);
 }
@@ -68,7 +81,8 @@ QString TextConverter::convertLastWordInText(const QString& text, ConversionDire
 
     const QString token = match.captured(1);
     const QString suffix = match.captured(2);
-    const QString converted = convertText(token, direction == ConversionDirection::AutoDetect ? resolveDirection(token) : direction);
+
+    const QString converted = convertText(token, direction);
 
     QString result = text;
     result.chop(token.size() + suffix.size());
@@ -77,8 +91,4 @@ QString TextConverter::convertLastWordInText(const QString& text, ConversionDire
     return result;
 }
 
-ConversionDirection TextConverter::resolveDirection(const QString& text) const {
-    return autoDirection(text);
-}
-
-}  // namespace FlamentineSwitcher::Conversion
+} // namespace FlamentineSwitcher::Conversion

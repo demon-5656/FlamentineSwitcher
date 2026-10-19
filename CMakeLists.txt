@@ -18,10 +18,21 @@ set(CMAKE_AUTOUIC ON)
 include(CTest)
 include(GNUInstallDirs)
 
+set(FLAMENTINE_SWITCHER_EXECUTABLE "${CMAKE_INSTALL_FULL_BINDIR}/flamentine-switcher")
+foreach(desktop_file
+        flamentine-switcher.desktop
+        flamentine-transliterate-selection.desktop)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/packaging/desktop/${desktop_file}"
+        "${CMAKE_CURRENT_BINARY_DIR}/${desktop_file}"
+        @ONLY
+    )
+endforeach()
+
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets DBus Test)
+find_package(KF6GlobalAccel REQUIRED)
 find_package(X11 REQUIRED)
 find_library(XKBFILE_LIBRARY xkbfile REQUIRED)
-find_library(XI_LIBRARY Xi REQUIRED)
 find_library(XTST_LIBRARY Xtst REQUIRED)
 
 add_library(flamentine_utils
@@ -35,7 +46,6 @@ target_link_libraries(flamentine_utils PUBLIC Qt6::Core Qt6::Gui)
 add_library(flamentine_conversion
     src/conversion/layout_maps.cpp
     src/conversion/text_converter.cpp
-    src/conversion/heuristics.cpp
 )
 target_include_directories(flamentine_conversion PUBLIC include)
 target_link_libraries(flamentine_conversion PUBLIC Qt6::Core flamentine_utils)
@@ -89,7 +99,6 @@ target_link_libraries(flamentine_backends
         Qt6::Gui
         ${X11_LIBRARIES}
         ${XKBFILE_LIBRARY}
-        ${XI_LIBRARY}
         ${XTST_LIBRARY}
         flamentine_core
         flamentine_utils
@@ -139,6 +148,7 @@ target_link_libraries(flamentine-switcher
         Qt6::Gui
         Qt6::Widgets
         Qt6::DBus
+        KF6::GlobalAccel
         flamentine_backends
         flamentine_core
         flamentine_services
@@ -148,17 +158,31 @@ target_link_libraries(flamentine-switcher
 
 install(TARGETS flamentine-switcher RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(
-    FILES packaging/desktop/flamentine-switcher.desktop
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/flamentine-switcher.desktop"
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
 )
 install(
-    FILES packaging/desktop/flamentine-transliterate-selection.desktop
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/flamentine-transliterate-selection.desktop"
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
 )
+
 install(
-    FILES packaging/desktop/flamentine-switcher-autostart.desktop
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/xdg/autostart
+    FILES
+        README.md
+        docs/kde-integration.md
+        docs/wayland-limitations.md
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}
 )
+
+set(CPACK_PACKAGE_NAME "flamentine-switcher")
+set(CPACK_PACKAGE_VENDOR "FlamentineSwitcher")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "KDE Plasma Wayland text layout conversion utility")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME "flamentine-switcher-${PROJECT_VERSION}-linux-x86_64")
+set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+set(CPACK_GENERATOR "TGZ")
+include(CPack)
 
 if(BUILD_TESTING)
     qt_add_executable(conversion_tests tests/conversion_tests.cpp)
@@ -170,11 +194,6 @@ if(BUILD_TESTING)
     target_include_directories(config_tests PRIVATE include)
     target_link_libraries(config_tests PRIVATE Qt6::Test flamentine_core)
     add_test(NAME config_tests COMMAND config_tests)
-
-    qt_add_executable(heuristics_tests tests/heuristics_tests.cpp)
-    target_include_directories(heuristics_tests PRIVATE include)
-    target_link_libraries(heuristics_tests PRIVATE Qt6::Test flamentine_conversion)
-    add_test(NAME heuristics_tests COMMAND heuristics_tests)
 
     qt_add_executable(rules_tests tests/rules_tests.cpp)
     target_include_directories(rules_tests PRIVATE include)

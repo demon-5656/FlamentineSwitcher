@@ -5,6 +5,7 @@
 namespace FlamentineSwitcher::Conversion {
 
 enum class ConversionDirection {
+    // Convert every individual Latin or Cyrillic letter to its counterpart.
     AutoDetect,
     UsToRu,
     RuToUs,
@@ -12,9 +13,8 @@ enum class ConversionDirection {
 
 class TextConverter {
 public:
-    QString convertText(const QString& text, ConversionDirection direction = ConversionDirection::AutoDetect) const;
-    QString convertLastWordInText(const QString& text, ConversionDirection direction = ConversionDirection::AutoDetect) const;
-    ConversionDirection resolveDirection(const QString& text) const;
+    QString convertText(const QString& text, ConversionDirection direction) const;
+    QString convertLastWordInText(const QString& text, ConversionDirection direction) const;
 };
 
 }  // namespace FlamentineSwitcher::Conversion

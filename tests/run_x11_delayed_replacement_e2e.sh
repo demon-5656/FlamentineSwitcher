@@ -111,11 +111,7 @@ cat > "$CONFIG_FILE" <<'JSON'
     "toggleEnabled": "Meta+Alt+S"
   },
   "conversion": {
-    "preserveCase": true,
-    "preservePunctuation": true,
-    "autoConvertEnabled": true,
-    "heuristicsEnabled": true,
-    "autoConvertDelayMs": 250
+    "switchLayoutAfterConversion": true
   },
   "logging": {
     "level": "info",

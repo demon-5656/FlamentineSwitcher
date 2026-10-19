@@ -39,24 +39,14 @@ QJsonObject HotkeyConfig::toJsonObject() const {
 
 ConversionConfig ConversionConfig::fromJsonObject(const QJsonObject& object) {
     ConversionConfig config;
-    config.preserveCase = object.value(QStringLiteral("preserveCase")).toBool(config.preserveCase);
-    config.preservePunctuation = object.value(QStringLiteral("preservePunctuation")).toBool(config.preservePunctuation);
     config.switchLayoutAfterConversion =
         object.value(QStringLiteral("switchLayoutAfterConversion")).toBool(config.switchLayoutAfterConversion);
-    config.autoConvertEnabled = object.value(QStringLiteral("autoConvertEnabled")).toBool(config.autoConvertEnabled);
-    config.heuristicsEnabled = object.value(QStringLiteral("heuristicsEnabled")).toBool(config.heuristicsEnabled);
-    config.autoConvertDelayMs = qMax(0, object.value(QStringLiteral("autoConvertDelayMs")).toInt(config.autoConvertDelayMs));
     return config;
 }
 
 QJsonObject ConversionConfig::toJsonObject() const {
     return {
-        {QStringLiteral("preserveCase"), preserveCase},
-        {QStringLiteral("preservePunctuation"), preservePunctuation},
         {QStringLiteral("switchLayoutAfterConversion"), switchLayoutAfterConversion},
-        {QStringLiteral("autoConvertEnabled"), autoConvertEnabled},
-        {QStringLiteral("heuristicsEnabled"), heuristicsEnabled},
-        {QStringLiteral("autoConvertDelayMs"), autoConvertDelayMs},
     };
 }
 
@@ -81,52 +71,18 @@ AppConfig AppConfig::defaults() {
 AppConfig AppConfig::fromJsonObject(const QJsonObject& object) {
     AppConfig config = defaults();
     config.version = object.value(QStringLiteral("version")).toInt(config.version);
-    config.enabled = object.value(QStringLiteral("enabled")).toBool(config.enabled);
-    config.layouts = jsonArrayToStringList(object.value(QStringLiteral("layouts")));
-    if (config.layouts.isEmpty()) {
-        config.layouts = defaults().layouts;
-    }
-    config.defaultLayout = object.value(QStringLiteral("defaultLayout")).toString(config.defaultLayout);
-    if (!config.layouts.contains(config.defaultLayout)) {
-        config.defaultLayout = config.layouts.constFirst();
-    }
-    config.rememberLayoutPerWindow = object.value(QStringLiteral("rememberLayoutPerWindow")).toBool(config.rememberLayoutPerWindow);
-    config.rememberLayoutPerApp = object.value(QStringLiteral("rememberLayoutPerApp")).toBool(config.rememberLayoutPerApp);
     config.notificationsEnabled = object.value(QStringLiteral("notificationsEnabled")).toBool(config.notificationsEnabled);
     config.autoStart = object.value(QStringLiteral("autoStart")).toBool(config.autoStart);
-    config.requireAllowedTargets = object.value(QStringLiteral("requireAllowedTargets")).toBool(config.requireAllowedTargets);
-    config.allowedApps = jsonArrayToStringList(object.value(QStringLiteral("allowedApps")));
-    config.allowedWindowClasses = jsonArrayToStringList(object.value(QStringLiteral("allowedWindowClasses")));
-    config.excludedApps = jsonArrayToStringList(object.value(QStringLiteral("excludedApps")));
-    config.excludedWindowClasses = jsonArrayToStringList(object.value(QStringLiteral("excludedWindowClasses")));
-    config.excludeTerminals = object.value(QStringLiteral("excludeTerminals")).toBool(config.excludeTerminals);
-    config.excludeFullscreen = object.value(QStringLiteral("excludeFullscreen")).toBool(config.excludeFullscreen);
-    config.hotkeys = HotkeyConfig::fromJsonObject(object.value(QStringLiteral("hotkeys")).toObject());
     config.conversion = ConversionConfig::fromJsonObject(object.value(QStringLiteral("conversion")).toObject());
-    config.logging = LoggingConfig::fromJsonObject(object.value(QStringLiteral("logging")).toObject());
     return config;
 }
 
 QJsonObject AppConfig::toJsonObject() const {
     return {
-        {QStringLiteral("version"), version},
-        {QStringLiteral("enabled"), enabled},
-        {QStringLiteral("layouts"), QJsonArray::fromStringList(layouts)},
-        {QStringLiteral("defaultLayout"), defaultLayout},
-        {QStringLiteral("rememberLayoutPerWindow"), rememberLayoutPerWindow},
-        {QStringLiteral("rememberLayoutPerApp"), rememberLayoutPerApp},
+        {QStringLiteral("version"), 2},
         {QStringLiteral("notificationsEnabled"), notificationsEnabled},
         {QStringLiteral("autoStart"), autoStart},
-        {QStringLiteral("requireAllowedTargets"), requireAllowedTargets},
-        {QStringLiteral("allowedApps"), QJsonArray::fromStringList(allowedApps)},
-        {QStringLiteral("allowedWindowClasses"), QJsonArray::fromStringList(allowedWindowClasses)},
-        {QStringLiteral("excludedApps"), QJsonArray::fromStringList(excludedApps)},
-        {QStringLiteral("excludedWindowClasses"), QJsonArray::fromStringList(excludedWindowClasses)},
-        {QStringLiteral("excludeTerminals"), excludeTerminals},
-        {QStringLiteral("excludeFullscreen"), excludeFullscreen},
-        {QStringLiteral("hotkeys"), hotkeys.toJsonObject()},
         {QStringLiteral("conversion"), conversion.toJsonObject()},
-        {QStringLiteral("logging"), logging.toJsonObject()},
     };
 }
 

@@ -3,15 +3,8 @@
 #include <QDialog>
 
 #include "flamentine_switcher/core/config.h"
-#include "flamentine_switcher/core/models.h"
 
 class QCheckBox;
-class QComboBox;
-class QKeySequenceEdit;
-class QLabel;
-class QLineEdit;
-class QPlainTextEdit;
-class QPushButton;
 
 namespace FlamentineSwitcher::Ui {
 
@@ -22,66 +15,18 @@ public:
     explicit SettingsWindow(QWidget* parent = nullptr);
 
     void loadFromConfig(const FlamentineSwitcher::Core::AppConfig& config);
-    void setCurrentTargetContext(const FlamentineSwitcher::Core::WindowContext& context, const QString& backendStatus = QString());
     FlamentineSwitcher::Core::AppConfig buildConfig() const;
 
 signals:
     void configApplied(const FlamentineSwitcher::Core::AppConfig& config);
-    void copyCurrentTargetInfoRequested();
-    void allowCurrentTargetRequested();
-    void allowCurrentAppRequested();
-    void allowCurrentWindowClassRequested();
-    void importRequested(const QString& filePath);
-    void exportRequested(const QString& filePath);
 
 private slots:
     void apply();
-    void chooseImportFile();
-    void chooseExportFile();
-    void syncDefaultLayoutChoices();
-    void syncTargetPolicyUi();
 
 private:
-    QCheckBox* enabledCheckBox_ = nullptr;
-    QLineEdit* layoutsEdit_ = nullptr;
-    QComboBox* defaultLayoutCombo_ = nullptr;
-    QCheckBox* rememberPerWindowCheckBox_ = nullptr;
-    QCheckBox* rememberPerAppCheckBox_ = nullptr;
     QCheckBox* notificationsCheckBox_ = nullptr;
     QCheckBox* autostartCheckBox_ = nullptr;
-    QComboBox* targetPolicyCombo_ = nullptr;
-    QLabel* targetPolicyHintLabel_ = nullptr;
-    QLabel* currentTargetStatusLabel_ = nullptr;
-    QLabel* currentTargetAppValueLabel_ = nullptr;
-    QLabel* currentTargetWindowClassValueLabel_ = nullptr;
-    QLabel* currentTargetWindowIdValueLabel_ = nullptr;
-    QLabel* currentTargetFullscreenValueLabel_ = nullptr;
-    QPushButton* copyCurrentTargetInfoButton_ = nullptr;
-    QPushButton* addCurrentAppButton_ = nullptr;
-    QPushButton* addCurrentWindowClassButton_ = nullptr;
-    QPushButton* addCurrentTargetButton_ = nullptr;
-    QCheckBox* excludeTerminalsCheckBox_ = nullptr;
-    QCheckBox* excludeFullscreenCheckBox_ = nullptr;
-    QKeySequenceEdit* toggleLayoutShortcut_ = nullptr;
-    QKeySequenceEdit* convertLastWordShortcut_ = nullptr;
-    QKeySequenceEdit* convertSelectionShortcut_ = nullptr;
-    QKeySequenceEdit* openSettingsShortcut_ = nullptr;
-    QKeySequenceEdit* toggleEnabledShortcut_ = nullptr;
-    QPlainTextEdit* allowedAppsEdit_ = nullptr;
-    QPlainTextEdit* allowedWindowClassesEdit_ = nullptr;
-    QPlainTextEdit* excludedAppsEdit_ = nullptr;
-    QPlainTextEdit* excludedWindowClassesEdit_ = nullptr;
-    QCheckBox* preserveCaseCheckBox_ = nullptr;
-    QCheckBox* preservePunctuationCheckBox_ = nullptr;
     QCheckBox* switchLayoutAfterConversionCheckBox_ = nullptr;
-    QCheckBox* autoConvertCheckBox_ = nullptr;
-    QCheckBox* heuristicsCheckBox_ = nullptr;
-    QComboBox* autoConvertDelayCombo_ = nullptr;
-    QComboBox* loggingLevelCombo_ = nullptr;
-    QCheckBox* logFileCheckBox_ = nullptr;
-    QPushButton* importButton_ = nullptr;
-    QPushButton* exportButton_ = nullptr;
-    QPushButton* applyButton_ = nullptr;
 };
 
 }  // namespace FlamentineSwitcher::Ui

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <optional>
 #include <QTimer>
 
 #include "flamentine_switcher/core/config.h"
@@ -82,36 +83,30 @@ signals:
 private slots:
     void refreshLayout();
     void handleHotkeyAction(FlamentineSwitcher::Core::HotkeyAction action);
-    void handleObservedWordCommitted(quint64 tokenId, const QString& word, const FlamentineSwitcher::Core::WindowContext& context);
-    void processPendingAutoConversion();
     void beginSelectionCopy();
     void sendSelectionCopy();
     void waitForSelectionClipboard();
     void finishSelectionConversion();
 
 private:
-    struct PendingAutoConversion {
-        quint64 tokenId = 0;
-        QString word;
-        WindowContext context;
-        bool valid = false;
-    };
-
     bool setEnabled(bool enabled);
     QString clipboardText() const;
     void replaceClipboardText(const QString& text) const;
     void setKlipperClipboardText(const QString& text) const;
-    QString convertSelectionClipboardText(const QString& sourceText);
+    QString convertSelectionClipboardText(const QString& sourceText, Conversion::ConversionDirection direction);
     void registerHotkeys();
     void rememberCurrentTargetLayout(const QString& layoutId);
     bool allowCurrentTargetEntries(bool allowApp, bool allowWindowClass);
     QString formatTargetInfo(const WindowContext& context) const;
     void updateCurrentTargetUi(const WindowContext& context);
     void syncRememberedLayout(const WindowContext& context, const QString& currentLayoutId);
-    void updateTextInputBackendState();
+    void clearLayoutMemoryIfDisabled();
     void scheduleLayoutMemoryPersist();
     void persistLayoutMemory();
+    std::optional<Conversion::ConversionDirection> conversionDirectionForLayout(const QString& layoutId) const;
     QString targetLayoutIdForDirection(Conversion::ConversionDirection direction) const;
+    bool conversionPermitted() const;
+    std::optional<Conversion::ConversionDirection> resolveDirectionForCurrentLayout() const;
     void notifyInfo(const QString& message) const;
     void notifyWarning(const QString& message) const;
 
@@ -129,10 +124,8 @@ private:
     AppConfig config_;
     QString lastError_;
     QTimer refreshTimer_;
-    QTimer autoConvertTimer_;
     QTimer layoutMemoryPersistTimer_;
     QTimer selectionClipboardWaitTimer_;
-    PendingAutoConversion pendingAutoConversion_;
     WindowContext lastWindowContext_;
     bool syncingRememberedLayout_ = false;
     bool selectionConversionPending_ = false;
