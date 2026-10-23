@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Transliterate selected text
-Comment=Transliterate the active text selection with FlamentineSwitcher
-Exec=@FLAMENTINE_SWITCHER_EXECUTABLE@ --transliterate-selection
-Icon=input-keyboard
-Categories=Utility;Qt;
-NoDisplay=true
-StartupNotify=false

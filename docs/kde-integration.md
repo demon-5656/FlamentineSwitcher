@@ -13,13 +13,7 @@ flamentine-switcher --check-wayland
 
 ## Горячая клавиша
 
-Запущенный FlamentineSwitcher регистрирует действие **Convert selected text** через KDE Global Shortcuts. Для совместимости desktop launcher **Transliterate selected text** также вызывает:
-
-```text
-flamentine-switcher --transliterate-selection
-```
-
-По умолчанию назначается `Meta+End`. Если сочетание занято, измените его через **Параметры системы → Клавиатура → Сочетания клавиш**. Launcher обращается к уже запущенному FlamentineSwitcher по D-Bus и не создаёт второй фоновый процесс.
+Запущенный FlamentineSwitcher регистрирует действие **Convert selected text** через KDE Global Shortcuts. По умолчанию назначается `Meta+End`. Если сочетание занято, измените его через **Параметры системы → Клавиатура → Сочетания клавиш**.
 
 ## Как работает конвертация
 

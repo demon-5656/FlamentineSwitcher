@@ -4,7 +4,6 @@
 #include <QDBusReply>
 #include <QDebug>
 #include <QProcess>
-#include <QSettings>
 #include <QStandardPaths>
 #include <QTextStream>
 
@@ -71,25 +70,6 @@ int runKdeWaylandPreflight() {
         passed = false;
     } else {
         output << "OK: KDE keyboard layout service is available\n";
-    }
-
-    const QString launcherPath = QStandardPaths::locate(QStandardPaths::GenericDataLocation,
-                                                          QStringLiteral("applications/flamentine-transliterate-selection.desktop"),
-                                                          QStandardPaths::LocateFile);
-    if (launcherPath.isEmpty()) {
-        errors << "FAIL: KDE shortcut launcher is not installed. Reinstall FlamentineSwitcher.\n";
-        passed = false;
-    } else {
-        QSettings launcher(launcherPath, QSettings::IniFormat);
-        launcher.beginGroup(QStringLiteral("Desktop Entry"));
-        const QString command = launcher.value(QStringLiteral("Exec")).toString();
-        launcher.endGroup();
-        if (!command.contains(QStringLiteral("--transliterate-selection"))) {
-            errors << "FAIL: KDE shortcut launcher is malformed: " << launcherPath << "\n";
-            passed = false;
-        } else {
-            output << "OK: KDE action launcher is installed at " << launcherPath << "\n";
-        }
     }
 
     QDBusInterface globalAccel(QStringLiteral("org.kde.kglobalaccel"),

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 
 project(
     FlamentineSwitcher
-    VERSION 0.1.0
+    VERSION 0.1.1
     DESCRIPTION "Keyboard layout switcher and text conversion utility for KDE Plasma"
     LANGUAGES CXX
 )
@@ -10,6 +10,16 @@ project(
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+option(FLAMENTINE_SWITCHER_BASELINE_X86_64 "Build a portable baseline x86-64 executable" OFF)
+
+# Release archives must run on ordinary x86-64 CPUs.  Do not inherit the
+# builder's ISA tuning (for example CachyOS x86-64-v3 or AVX-512 settings).
+if((CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$" OR FLAMENTINE_SWITCHER_BASELINE_X86_64)
+   AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-march=x86-64 -mtune=generic)
+    set(FLAMENTINE_SWITCHER_BASELINE_X86_64 ON)
+endif()
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -20,8 +30,7 @@ include(GNUInstallDirs)
 
 set(FLAMENTINE_SWITCHER_EXECUTABLE "${CMAKE_INSTALL_FULL_BINDIR}/flamentine-switcher")
 foreach(desktop_file
-        flamentine-switcher.desktop
-        flamentine-transliterate-selection.desktop)
+        flamentine-switcher.desktop)
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/packaging/desktop/${desktop_file}"
         "${CMAKE_CURRENT_BINARY_DIR}/${desktop_file}"
@@ -156,16 +165,23 @@ target_link_libraries(flamentine-switcher
         flamentine_utils
 )
 
+if(FLAMENTINE_SWITCHER_BASELINE_X86_64)
+    # CachyOS startup objects carry an x86-64-v3 ELF property even when every
+    # project object is compiled for baseline x86-64. Remove that inherited
+    # property so the loader does not reject otherwise compatible older CPUs.
+    add_custom_command(
+        TARGET flamentine-switcher
+        POST_BUILD
+        COMMAND "${CMAKE_OBJCOPY}" --remove-section .note.gnu.property "$<TARGET_FILE:flamentine-switcher>"
+        VERBATIM
+    )
+endif()
+
 install(TARGETS flamentine-switcher RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(
     FILES "${CMAKE_CURRENT_BINARY_DIR}/flamentine-switcher.desktop"
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
 )
-install(
-    FILES "${CMAKE_CURRENT_BINARY_DIR}/flamentine-transliterate-selection.desktop"
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
-)
-
 install(
     FILES
         README.md

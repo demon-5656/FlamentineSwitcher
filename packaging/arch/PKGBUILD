@@ -1,5 +1,5 @@
 pkgname=flamentine-switcher
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc="Keyboard layout switcher and text conversion utility for KDE Plasma"
 arch=('x86_64')
@@ -11,7 +11,7 @@ source=("${pkgname}-${pkgver}.tar.gz")
 sha256sums=('SKIP')
 
 build() {
-  cmake -S "${srcdir}/${pkgname}-${pkgver}" -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+  cmake -S "${srcdir}/${pkgname}-${pkgver}" -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DFLAMENTINE_SWITCHER_BASELINE_X86_64=ON
   cmake --build build
 }
 
