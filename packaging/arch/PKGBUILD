@@ -1,5 +1,5 @@
 pkgname=flamentine-switcher
-pkgver=0.1.1
+pkgver=0.1.2
 pkgrel=1
 pkgdesc="Keyboard layout switcher and text conversion utility for KDE Plasma"
 arch=('x86_64')

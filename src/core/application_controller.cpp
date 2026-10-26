@@ -381,14 +381,25 @@ void ApplicationController::applyConfig(const AppConfig& config) {
     config_ = config;
     Utils::Logging::initialize(config_.logging);
 
-    if (!settingsManager_.save(config_)) {
-        notifyWarning(settingsManager_.lastError());
+    const bool settingsSaved = settingsManager_.save(config_);
+    const QString settingsError = settingsManager_.lastError();
+    if (!settingsSaved) {
+        notifyWarning(settingsError);
     }
-    if (!autostartService_.setEnabled(config_.autoStart)) {
-        notifyWarning(autostartService_.lastError());
+
+    const bool autostartUpdated = autostartService_.setEnabled(config_.autoStart);
+    const QString autostartError = autostartService_.lastError();
+    if (!autostartUpdated) {
+        notifyWarning(autostartError);
     }
 
     settingsWindow_.loadFromConfig(config_);
+    if (settingsSaved && autostartUpdated) {
+        settingsWindow_.showSaveResult(true, QStringLiteral("Настройки сохранены"));
+    } else {
+        const QString error = !settingsSaved ? settingsError : autostartError;
+        settingsWindow_.showSaveResult(false, QStringLiteral("Не удалось сохранить настройки: %1").arg(error));
+    }
     trayIcon_.setEnabledState(config_.enabled);
     registerHotkeys();
     clearLayoutMemoryIfDisabled();

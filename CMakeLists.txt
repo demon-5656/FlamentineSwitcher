@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 
 project(
     FlamentineSwitcher
-    VERSION 0.1.1
+    VERSION 0.1.2
     DESCRIPTION "Keyboard layout switcher and text conversion utility for KDE Plasma"
     LANGUAGES CXX
 )

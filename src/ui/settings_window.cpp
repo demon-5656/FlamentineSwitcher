@@ -26,6 +26,11 @@ SettingsWindow::SettingsWindow(QWidget* parent)
     rootLayout->addWidget(autostartCheckBox_);
     rootLayout->addWidget(notificationsCheckBox_);
     rootLayout->addWidget(switchLayoutAfterConversionCheckBox_);
+
+    saveStatusLabel_ = new QLabel;
+    saveStatusLabel_->setWordWrap(true);
+    saveStatusLabel_->setVisible(false);
+    rootLayout->addWidget(saveStatusLabel_);
     rootLayout->addStretch();
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Apply | QDialogButtonBox::Close);
@@ -35,17 +40,25 @@ SettingsWindow::SettingsWindow(QWidget* parent)
 }
 
 void SettingsWindow::loadFromConfig(const FlamentineSwitcher::Core::AppConfig& config) {
+    currentConfig_ = config;
     notificationsCheckBox_->setChecked(config.notificationsEnabled);
     autostartCheckBox_->setChecked(config.autoStart);
     switchLayoutAfterConversionCheckBox_->setChecked(config.conversion.switchLayoutAfterConversion);
+    saveStatusLabel_->setVisible(false);
 }
 
 FlamentineSwitcher::Core::AppConfig SettingsWindow::buildConfig() const {
-    auto config = FlamentineSwitcher::Core::AppConfig::defaults();
+    auto config = currentConfig_;
     config.notificationsEnabled = notificationsCheckBox_->isChecked();
     config.autoStart = autostartCheckBox_->isChecked();
     config.conversion.switchLayoutAfterConversion = switchLayoutAfterConversionCheckBox_->isChecked();
     return config;
+}
+
+void SettingsWindow::showSaveResult(const bool success, const QString& message) {
+    saveStatusLabel_->setText(message);
+    saveStatusLabel_->setStyleSheet(success ? QStringLiteral("color: #15803d;") : QStringLiteral("color: #b91c1c;"));
+    saveStatusLabel_->setVisible(true);
 }
 
 void SettingsWindow::apply() {
