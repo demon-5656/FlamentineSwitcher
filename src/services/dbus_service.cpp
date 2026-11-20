@@ -26,6 +26,7 @@ bool DbusService::start() {
                                    this,
                                    QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals)) {
         lastError_ = connection.lastError().message();
+        connection.unregisterService(QStringLiteral("org.flamentineswitcher.Control"));
         return false;
     }
 

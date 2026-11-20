@@ -3,6 +3,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QSaveFile>
 #include <QStandardPaths>
 
 namespace FlamentineSwitcher::Services {
@@ -19,11 +20,7 @@ bool AutostartService::setEnabled(const bool enabled) const {
     }
 
     QFile file(desktopFilePath());
-    if (!file.exists()) {
-        return true;
-    }
-
-    if (!file.remove()) {
+    if (file.exists() && !file.remove()) {
         lastError_ = QStringLiteral("Failed to remove autostart entry: %1").arg(file.errorString());
         return false;
     }
@@ -45,8 +42,8 @@ bool AutostartService::writeDesktopFile() const {
     QFileInfo info(path);
     QDir().mkpath(info.dir().absolutePath());
 
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         lastError_ = QStringLiteral("Failed to open autostart file: %1").arg(file.errorString());
         return false;
     }
@@ -69,8 +66,10 @@ bool AutostartService::writeDesktopFile() const {
         "Terminal=false\n"
         "NoDisplay=true\n")
                                      .arg(executable);
-    file.write(desktopEntry.toUtf8());
-    file.close();
+    if (file.write(desktopEntry.toUtf8()) != desktopEntry.toUtf8().size() || !file.commit()) {
+        lastError_ = QStringLiteral("Failed to save autostart file: %1").arg(file.errorString());
+        return false;
+    }
     return true;
 }
 

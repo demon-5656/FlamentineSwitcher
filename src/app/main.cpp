@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QAction>
+#include <QDBusConnectionInterface>
 #include <QDBusInterface>
 #include <QDBusReply>
 #include <QDebug>
@@ -188,7 +189,18 @@ int main(int argc, char* argv[]) {
                                                                notifications);
 
     FlamentineSwitcher::Services::DbusService dbusService(controller);
-    dbusService.start();
+    if (!dbusService.start()) {
+        if (auto* busInterface = QDBusConnection::sessionBus().interface()) {
+            const QDBusReply<bool> alreadyRunning = busInterface->isServiceRegistered(
+                QStringLiteral("org.flamentineswitcher.Control"));
+            if (alreadyRunning.isValid() && alreadyRunning.value()) {
+                qInfo() << "FlamentineSwitcher is already running";
+                return 0;
+            }
+        }
+        qCritical().noquote() << "Failed to start FlamentineSwitcher D-Bus service:" << dbusService.lastError();
+        return 1;
+    }
 
     QAction convertSelectionShortcut(&app);
     if (FlamentineSwitcher::Utils::ProcessInfo::currentSessionType() == SessionType::Wayland) {
